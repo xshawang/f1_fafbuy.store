@@ -6,14 +6,21 @@ CONFIG_FILE="ecosystem.config.js"
 cd "$(dirname "$0")"
 # ========================================
 # PM2 管理脚本 - 支持 start/stop/restart/reload/logs/status
-# 用法: ./pm2-manage.sh [start|stop|restart|reload|logs|status|monit]
+# 用法: ./deploy.sh [start|stop|restart|reload|logs|status|monit]
 # ========================================
+
+# 检查是否有执行权限（仅在实际部署时使用）
+if [ ! -x "$0" ]; then
+    echo "警告: 脚本没有执行权限"
+   # echo "请运行以下命令添加权限: chmod u+x deploy.sh"
+  # exit 1
+  sudo chmod 777 deploy.sh
+fi
+
 echo ' git update new code '
 #git fetch --all#
 #git reset --hard origin/master
 git pull origin master
-
-sudo chmod u+x ./deploy.sh
 
 echo ' npm run build'
 npm run build
