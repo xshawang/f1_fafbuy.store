@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="site.title">F1 Experiences</title>
+  
+  <!-- 引入F1官方样式 -->
+  <link rel="stylesheet" href="./F1 Experiences_files/ionicons.min.css">
+  <link rel="stylesheet" href="./F1 Experiences_files/intlTelInput.css">
+  <link rel="stylesheet" href="./F1 Experiences_files/application-464b1c53415f818abc87d9a1313c5dc14c28ed04288d8ee9542b6debad3085b1.css">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* 头部样式 */
+    .header {
+      background: #151515;
+      color: white;
+      padding: 0;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .header-top {
+      background: #e10600;
+      padding: 8px 0;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .header-main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 15px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo img {
+      height: 40px;
+    }
+
+    .nav-menu {
+      display: flex;
+      gap: 30px;
+      list-style: none;
+    }
+
+    .nav-menu a {
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      transition: color 0.3s;
+    }
+
+    .nav-menu a:hover {
+      color: #e10600;
+    }
+
+    /* 主内容区域 */
+    .main-content {
+      flex: 1;
+      padding: 40px 20px;
+      background: #f5f5f5;
+    }
+
+    .checkout-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 40px;
+    }
+
+    .checkout-form {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .order-summary {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 32px;
+      border-bottom: 3px solid #e10600;
+      padding-bottom: 15px;
+    }
+
+    .section {
+      margin-bottom: 35px;
+      padding: 25px;
+      background: #fafafa;
+      border-radius: 8px;
+      border-left: 4px solid #e10600;
+    }
+
+    .section h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #e10600;
+      box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.1);
+    }
+
+    .form-group input.error {
+      border-color: #e10600;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin-top: 3px;
+    }
+
+    .checkbox-group label {
+      margin: 0;
+      font-weight: 400;
+      cursor: pointer;
+    }
+
+    .field-error {
+      color: #e10600;
+      font-size: 12px;
+      margin-top: 5px;
+      display: none;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: #e10600;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 25px;
+    }
+
+    .btn-submit:hover {
+      background: #c00500;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .summary-item:last-child {
+      border-bottom: none;
+    }
+
+    .summary-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 20px 0 0;
+      margin-top: 15px;
+      border-top: 2px solid #e10600;
+      font-size: 20px;
+      font-weight: 700;
+      color: #e10600;
+    }
+
+    .language-indicator {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 999;
+    }
+
+    .language-indicator .lang-code {
+      color: #e10600;
+    }
+
+    /* 底部样式 */
+    .footer {
+      background: #151515;
+      color: white;
+      padding: 60px 40px 30px;
+      margin-top: 60px;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .footer-menu {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .footer-section h3 {
+      color: #e10600;
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    .footer-section ul {
+      list-style: none;
+    }
+
+    .footer-section li {
+      margin-bottom: 10px;
+    }
+
+    .footer-section a {
+      color: #999;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.3s;
+    }
+
+    .footer-section a:hover {
+      color: white;
+    }
+
+    .footer-logo {
+      margin-bottom: 30px;
+    }
+
+    .footer-logo img {
+      height: 50px;
+    }
+
+    .social-links {
+      display: flex;
+      gap: 20px;
+      margin: 30px 0;
+    }
+
+    .social-links a {
+      color: white;
+      font-size: 24px;
+      transition: color 0.3s;
+    }
+
+    .social-links a:hover {
+      color: #e10600;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid #333;
+      padding-top: 30px;
+      margin-top: 30px;
+    }
+
+    .legal-links {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .legal-links a {
+      color: #999;
+      text-decoration: none;
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .legal-links a:hover {
+      color: white;
+    }
+
+    .copyright {
+      color: #666;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 1024px) {
+      .checkout-container {
+        grid-template-columns: 1fr;
+      }
+
+      .order-summary {
+        position: static;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .checkout-container {
+        padding: 20px 10px;
+      }
+
+      .checkout-form,
+      .order-summary {
+        padding: 20px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .section h2 {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 头部导航 -->
+  <header class="header">
+    <div class="header-top">
+      <span data-i18n="navigation.headerBanner">Official F1® Experience Provider</span>
+    </div>
+    <div class="header-main">
+      <div class="logo">
+        <a href="https://f1experiences.com">
+          <img src="./F1 Experiences_files/137819-F1-Experiences-Logo-RGB_White-Red_Horizontal_1-a1b8468db9b0bd2c7c9a1462e92d9eff.svg" alt="F1 Experiences" class="light-mode">
+          <img src="./F1 Experiences_files/161041-F1_Experiences_Logo-63bc520e798c13c28ce1a4d2215097e0.png" alt="F1 Experiences" class="dark-mode" style="display:none;">
+        </a>
+      </div>
+      <nav>
+        <ul class="nav-menu">
+          <li><a href="#" data-i18n="navigation.races">Races</a></li>
+          <li><a href="#" data-i18n="navigation.hospitality">Hospitality</a></li>
+          <li><a href="#" data-i18n="navigation.ticketHotel">Ticket + Hotel</a></li>
+          <li><a href="#" data-i18n="navigation.merchandise">Merchandise</a></li>
+          <li><a href="#" data-i18n="navigation.about">About</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 语言指示器 -->
+  <div class="language-indicator">
+    当前语言: <span class="lang-code" id="currentLang">检测中...</span>
+  </div>
+
+  <!-- 主内容区域 -->
+  <main class="main-content">
+
+  <div class="checkout-container">
+    <!-- 左侧：结算表单 -->
+    <div class="checkout-form">
+      <h1 data-i18n="checkout.title">Checkout</h1>
+
+      <!-- 联系信息 -->
+      <div class="section">
+        <h2 data-i18n="checkout.contact">Contact</h2>
+        
+        <div class="form-group">
+          <label data-i18n="checkout.email">Email</label>
+          <input 
+            type="email" 
+            id="email"
+            data-i18n-placeholder="checkout.emailPlaceholder"
+            placeholder="Email address"
+            required
+          >
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="sendUpdates">
+          <label for="sendUpdates" data-i18n="checkout.sendUpdates">Send me F1 Experiences updates and promotions by email</label>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="sendPartnerUpdates">
+          <label for="sendPartnerUpdates" data-i18n="checkout.sendPartnerUpdates">Send me updates and promotions by email from Formula 1 and its partners</label>
+        </div>
+      </div>
+
+      <!-- 配送信息 -->
+      <div class="section">
+        <h2 data-i18n="checkout.delivery">Delivery</h2>
+        
+        <div class="form-group">
+          <label data-i18n="checkout.country">Country/Region</label>
+          <select id="countrySelect" required>
+            <option value="" disabled selected data-i18n="checkout.country">Country/Region</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="checkout.firstName">First name</label>
+            <input 
+              type="text" 
+              id="firstName"
+              data-i18n-placeholder="checkout.firstNamePlaceholder"
+              placeholder="First name"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="checkout.lastName">Last name</label>
+            <input 
+              type="text" 
+              id="lastName"
+              data-i18n-placeholder="checkout.lastNamePlaceholder"
+              placeholder="Last name"
+              required
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="checkout.address">Address</label>
+          <input 
+            type="text" 
+            id="address"
+            data-i18n-placeholder="checkout.addressPlaceholder"
+            placeholder="Address"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="checkout.apartment">Apartment, suite, etc. (optional)</label>
+          <input 
+            type="text" 
+            id="apartment"
+            data-i18n-placeholder="checkout.apartmentPlaceholder"
+            placeholder="Apartment, suite, etc. (optional)"
+          >
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="checkout.city">City</label>
+            <input 
+              type="text" 
+              id="city"
+              data-i18n-placeholder="checkout.cityPlaceholder"
+              placeholder="City"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="checkout.state">State/Province</label>
+            <input 
+              type="text" 
+              id="state"
+              data-i18n-placeholder="checkout.statePlaceholder"
+              placeholder="State/Province"
+            >
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="checkout.zipCode">ZIP code</label>
+            <input 
+              type="text" 
+              id="zipCode"
+              data-i18n-placeholder="checkout.zipCodePlaceholder"
+              placeholder="ZIP code"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="checkout.phone">Phone</label>
+            <input 
+              type="tel" 
+              id="phone"
+              data-i18n-placeholder="checkout.phonePlaceholder"
+              placeholder="Phone number"
+              required
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- 支付信息 - 信用卡 -->
+      <div class="section" id="paymentSection">
+        <h2 data-i18n="checkout.creditCard">Credit Card</h2>
+        
+        <div class="form-group">
+          <label data-i18n="checkout.cardNumber">Card number</label>
+          <input 
+            type="text" 
+            id="cardNumber"
+            data-i18n-placeholder="checkout.cardNumberPlaceholder"
+            placeholder="Card number"
+            maxlength="19"
+            required
+          >
+          <div class="field-error" id="cardNumberError"></div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="checkout.expirationDate">Expiration date</label>
+            <input 
+              type="text" 
+              id="cardExpiry"
+              data-i18n-placeholder="checkout.expirationDate"
+              placeholder="MM / YY"
+              maxlength="7"
+              required
+            >
+            <div class="field-error" id="expiryError"></div>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="checkout.securityCode">Security code</label>
+            <input 
+              type="text" 
+              id="cardCvv"
+              data-i18n-placeholder="checkout.securityCode"
+              placeholder="CVV"
+              maxlength="4"
+              required
+            >
+            <div class="field-error" id="cvvError"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="checkout.nameOnCard">Name on card</label>
+          <input 
+            type="text" 
+            id="cardName"
+            data-i18n-placeholder="checkout.nameOnCardPlaceholder"
+            placeholder="Name on card"
+            required
+          >
+          <div class="field-error" id="nameError"></div>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="billingSame" checked>
+          <label for="billingSame" data-i18n="checkout.billingSameAsShipping">Billing address same as shipping</label>
+        </div>
+      </div>
+
+      <button class="btn-submit" data-i18n="checkout.completeOrder" onclick="handleSubmit()">
+        Complete order
+      </button>
+
+      <p style="margin-top: 20px; font-size: 12px; color: #999; text-align: center;">
+        <a href="#" style="color: #999;" data-i18n="checkout.privacyPolicy">Privacy policy</a> | 
+        <a href="#" style="color: #999;" data-i18n="checkout.termsOfService">Terms of service</a> | 
+        <a href="#" style="color: #999;" data-i18n="checkout.refundPolicy">Refund policy</a>
+      </p>
+    </div>
+
+    <!-- 右侧：订单摘要 -->
+    <div class="order-summary">
+      <h2 data-i18n="checkout.orderSummary" style="margin-bottom: 20px; font-size: 20px;">Order summary</h2>
+      
+      <div class="summary-item">
+        <span data-i18n="checkout.subtotal">Subtotal</span>
+        <span id="subtotal">¥0.00</span>
+      </div>
+      
+      <div class="summary-item">
+        <span data-i18n="checkout.shipping">Shipping</span>
+        <span id="shipping">¥0.00</span>
+      </div>
+      
+      <div class="summary-item">
+        <span data-i18n="checkout.tax">Tax</span>
+        <span id="tax">¥0.00</span>
+      </div>
+      
+      <div class="summary-total">
+        <span data-i18n="checkout.total">Total</span>
+        <span id="total">¥0.00</span>
+      </div>
+    </div>
+  </div>
+  </main>
+
+  <!-- 底部 -->
+  <footer class="footer">
+    <div class="footer-content">
+      <!-- 底部Logo -->
+      <div class="footer-logo">
+        <img src="./F1 Experiences_files/137819-F1-Experiences-Logo-RGB_White-Red_Horizontal_1-a1b8468db9b0bd2c7c9a1462e92d9eff.svg" alt="F1 Experiences">
+      </div>
+
+      <!-- 底部菜单 -->
+      <div class="footer-menu">
+        <div class="footer-section">
+          <h3 data-i18n="navigation.about">About</h3>
+          <ul>
+            <li><a href="#" data-i18n="navigation.about">About Us</a></li>
+            <li><a href="#" data-i18n="navigation.faqs">FAQs</a></li>
+            <li><a href="#" data-i18n="navigation.contact">Contact</a></li>
+            <li><a href="#" data-i18n="navigation.blog">Blog</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="navigation.championship">Championship</h3>
+          <ul>
+            <li><a href="#" data-i18n="navigation.races">Races</a></li>
+            <li><a href="#" data-i18n="navigation.ticketHotel">F1 Ticket + Hotel</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="navigation.hospitality">Hospitality</h3>
+          <ul>
+            <li><a href="#" data-i18n="navigation.championsClub">Champions Club</a></li>
+            <li><a href="#" data-i18n="navigation.paddockClub">Paddock Club</a></li>
+            <li><a href="#" data-i18n="navigation.f1Garage">F1 Garage</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="navigation.teamPackages">Team Packages</h3>
+          <ul>
+            <li><a href="#">Alpine F1 Team</a></li>
+            <li><a href="#">Haas F1 Team</a></li>
+            <li><a href="#">Red Bull Racing</a></li>
+            <li><a href="#">Audi F1 Team</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="navigation.contact">Contact</h3>
+          <ul>
+            <li><a href="mailto:info@f1experiences.com">info@f1experiences.com</a></li>
+            <li><a href="tel:+18883265430">+1 (888) 326-5430</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 社交媒体链接 -->
+      <div class="social-links">
+        <a href="https://www.facebook.com/F1Experiences/" target="_blank" aria-label="Facebook">
+          <i class="fa fab fa-facebook"></i>
+        </a>
+        <a href="https://www.instagram.com/f1experiences/" target="_blank" aria-label="Instagram">
+          <i class="fa fab fa-instagram"></i>
+        </a>
+        <a href="https://www.youtube.com/c/f1experiencesf1/videos" target="_blank" aria-label="YouTube">
+          <i class="fa fab fa-youtube-play fa-youtube"></i>
+        </a>
+      </div>
+
+      <!-- 底部版权信息 -->
+      <div class="footer-bottom">
+        <div class="legal-links">
+          <a href="#" data-i18n="checkout.privacyPolicy">Privacy Policy</a>
+          <a href="#" data-i18n="checkout.termsOfService">Terms of Service</a>
+          <a href="#" data-i18n="checkout.refundPolicy">Refund Policy</a>
+        </div>
+        <div class="copyright">
+          <p>© 2026 Formula One World Championship Limited</p>
+          <p>F1® Experiences is operated by QuintEvents International, LLC and is authorised to do so by Formula One Digital Media Limited.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 国际化模块 -->
+  <script src="./js/i18n.js"></script>
+  <script src="./js/country-selector.js"></script>
+  <script src="./js/credit-card.js"></script>
+  <script src="./js/language-switcher.js"></script>
+
+  <script>
+    // 页面加载完成后显示当前语言
+    document.addEventListener('DOMContentLoaded', () => {
+      // 等待i18n初始化完成后更新语言指示器
+      setTimeout(() => {
+        const currentLang = i18n.getCurrentLocale();
+        const langDisplay = document.getElementById('currentLang');
+        if (langDisplay) {
+          langDisplay.textContent = currentLang === 'zh-CN' ? '中文 (zh-CN)' : 'English (en)';
+        }
+        
+        // 更新页面lang属性
+        document.documentElement.lang = currentLang;
+        
+        console.log('页面语言已设置为:', currentLang);
+        console.log('当前URL:', window.location.href);
+      }, 500);
+    });
+
+    // 提交处理
+    function handleSubmit() {
+      // 验证信用卡信息
+      const isValid = typeof creditCard !== 'undefined' ? creditCard.validateAll() : true;
+      
+      if (isValid) {
+        alert(i18n.t('common.success') + ' - ' + i18n.t('checkout.completeOrder'));
+        console.log('Order submitted successfully');
+      } else {
+        alert(i18n.t('common.error') + ' - ' + i18n.t('errors.cardNumberInvalid'));
+      }
+    }
+
+    // 监听语言切换事件
+    window.addEventListener('localeChanged', (e) => {
+      console.log('语言已切换为:', e.detail.locale);
+      const langDisplay = document.getElementById('currentLang');
+      if (langDisplay) {
+        langDisplay.textContent = e.detail.locale === 'zh-CN' ? '中文 (zh-CN)' : 'English (en)';
+      }
+      document.documentElement.lang = e.detail.locale;
+    });
+  </script>
+</body>
+</html>

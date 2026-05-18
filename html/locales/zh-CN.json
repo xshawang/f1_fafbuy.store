@@ -4,14 +4,15 @@
     "description": "F1 体验是一级方程式赛车全球比赛的官方体验、礼遇和旅行项目。"
   },
   "navigation": {
+    "headerBanner": "F1®官方体验提供商",
     "about": "关于我们",
     "faqs": "常见问题",
     "championship": "锦标赛",
     "races": "赛事",
-    "ticketHotel": "F1 门票+酒店",
+    "ticketHotel": "门票+酒店",
     "hospitality": "礼遇",
     "championsClub": "冠军俱乐部",
-    "paddockClub": "F1围场俱乐部",
+    "paddockClub": "围场俱乐部",
     "f1Garage": "F1车库",
     "teamPackages": "车队套餐",
     "merchandise": "周边商品",

@@ -95,10 +95,35 @@ class LanguageSwitcher {
   async switchLanguage(locale) {
     await i18n.setLocale(locale);
     
-    // 更新URL参数
-    const url = new URL(window.location);
-    url.searchParams.set('lang', locale);
-    window.history.pushState({}, '', url);
+    // 更新URL以包含语言标识
+    const currentUrl = window.location.href;
+    let newUrl;
+    
+    if (locale === 'zh-CN') {
+      // 如果切换到中文，确保URL包含 zh-CN
+      if (currentUrl.includes('/en/')) {
+        newUrl = currentUrl.replace('/en/', '/zh-CN/');
+      } else if (!currentUrl.includes('zh-CN')) {
+        // 在域名后插入 /zh-CN/
+        const urlObj = new URL(currentUrl);
+        newUrl = urlObj.origin + '/zh-CN' + urlObj.pathname + urlObj.search;
+      } else {
+        newUrl = currentUrl;
+      }
+    } else {
+      // 如果切换到英文，确保URL包含 en
+      if (currentUrl.includes('/zh-CN/')) {
+        newUrl = currentUrl.replace('/zh-CN/', '/en/');
+      } else if (!currentUrl.includes('/en/')) {
+        // 在域名后插入 /en/
+        const urlObj = new URL(currentUrl);
+        newUrl = urlObj.origin + '/en' + urlObj.pathname + urlObj.search;
+      } else {
+        newUrl = currentUrl;
+      }
+    }
+    
+    window.history.pushState({}, '', newUrl);
   }
 
   /**

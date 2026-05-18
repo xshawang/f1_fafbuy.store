@@ -41,15 +41,24 @@ class I18nManager {
    * 检测浏览器语言
    */
   detectBrowserLanguage() {
-    const browserLang = navigator.language || navigator.userLanguage;
-    
-    if (browserLang.startsWith('zh')) {
+    // 优先检查 URL 是否包含 zh-CN
+    const currentUrl = window.location.href;
+    if (currentUrl.includes('zh-CN')) {
       this.currentLocale = 'zh-CN';
-    } else {
+    } else if (currentUrl.includes('en')) {
       this.currentLocale = 'en';
+    } else {
+      // 如果没有明确的语言标识，检测浏览器语言
+      const browserLang = navigator.language || navigator.userLanguage;
+      
+      if (browserLang.startsWith('zh')) {
+        this.currentLocale = 'zh-CN';
+      } else {
+        this.currentLocale = 'en';
+      }
     }
 
-    // 检查 URL 参数
+    // 检查 URL 参数（优先级最高）
     const urlParams = new URLSearchParams(window.location.search);
     const langParam = urlParams.get('lang');
     if (langParam && this.locales[langParam]) {

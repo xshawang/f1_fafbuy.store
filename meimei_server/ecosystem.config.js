@@ -22,15 +22,15 @@ module.exports = {
         NODE_ENV: 'production',
         APP_ENV: 'production',
         PORT: '3000',
-        TZ: 'America/Sao_Paulo',
+        TZ: 'America/Chicago',
         
         // 数据库配置（从 .env.production 复制到这里）
         DB_TYPE: 'mysql',
         DB_HOST: 'localhost',
         DB_PORT: '3306',
-        DB_USER: 'fifa',
-        DB_PASSWORD: 'f_23223_2WEdsdfs',
-        DB_DATABASE: 'ffia',
+        DB_USER: 'store',
+        DB_PASSWORD: '876543219a',
+        DB_DATABASE: 'store',
         DB_SYNCHRONIZE: 'false',
         DB_LOGGING: 'false',
         
@@ -39,7 +39,7 @@ module.exports = {
         REDIS_HOST: 'localhost',
         REDIS_PORT: '6379',
         REDIS_DB: '2',
-        REDIS_PASSWORD: 'foobaredb840fc02d524045429941cc15f59',
+        REDIS_PASSWORD: '',
         
         // 其他配置
         SERVER_PORT: '3000',

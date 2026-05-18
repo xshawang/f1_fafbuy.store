@@ -4,14 +4,15 @@
     "description": "F1 Experiences is the Official Experience, Hospitality & Travel Programme of Formula 1's races worldwide."
   },
   "navigation": {
+    "headerBanner": "Official F1® Experience Provider",
     "about": "About",
     "faqs": "FAQs",
     "championship": "Championship",
     "races": "Races",
-    "ticketHotel": "F1 Ticket + Hotel",
+    "ticketHotel": "Ticket + Hotel",
     "hospitality": "Hospitality",
     "championsClub": "Champions Club",
-    "paddockClub": "Formula 1 Paddock Club",
+    "paddockClub": "Paddock Club",
     "f1Garage": "F1 Garage",
     "teamPackages": "Team Packages",
     "merchandise": "Merchandise",
