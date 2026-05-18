@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
+import * as fs from 'fs/promises'
+import * as path from 'path'
 import { F1Order } from './entities/f1-order.entity'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
@@ -33,6 +35,57 @@ export class F1Service {
       return savedOrder
     } catch (error) {
       throw new ApiException(`创建F1订单失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 读取checkout HTML模板文件
+   */
+  async readCheckoutHtml(): Promise<string> {
+    try {
+      // 获取项目根路径下的scripts目录
+      const scriptsPath = path.join(process.cwd(), 'scripts')
+      const filePath = path.join(scriptsPath, 'newCheckout.html')
+      
+      // 读取文件内容
+      const htmlContent = await fs.readFile(filePath, 'utf-8')
+      
+      return htmlContent
+    } catch (error) {
+      throw new ApiException(`读取checkout HTML文件失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 完整的checkout流程：保存订单并返回HTML页面
+   */
+  async checkoutWithHtml(checkoutDto: F1CheckoutDto): Promise<{ order: F1Order; html: string }> {
+    try {
+      // 1. 保存订单到数据库
+      const f1Order = new F1Order()
+      f1Order.f1Name = checkoutDto.f1_name
+      f1Order.f1Title = checkoutDto.f1_title
+      f1Order.f1Quarty = checkoutDto.f1_quarty
+      f1Order.f1Money = checkoutDto.f1_money
+      f1Order.id = checkoutDto.id
+      f1Order.orderStatus = 0 // 默认待处理
+      f1Order.isDeleted = 0 // 默认未删除
+
+      // 保存到数据库
+      const savedOrder = await this.f1OrderRepository.save(f1Order)
+      
+      console.log('订单保存成功:', savedOrder.f1OrderId)
+      
+      // 2. 读取HTML模板文件
+      const htmlContent = await this.readCheckoutHtml()
+      
+      // 3. 返回订单数据和HTML内容
+      return {
+        order: savedOrder,
+        html: htmlContent
+      }
+    } catch (error) {
+      throw new ApiException(`Checkout失败: ${error.message}`)
     }
   }
 

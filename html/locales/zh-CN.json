@@ -47,6 +47,7 @@
     "phonePlaceholder": "电话号码",
     "payment": "付款方式",
     "creditCard": "信用卡",
+    "creditCardDescription": "请在下方输入您的信用卡信息。",
     "cardNumber": "卡号",
     "cardNumberPlaceholder": "卡号",
     "expirationDate": "有效期（月/年）",

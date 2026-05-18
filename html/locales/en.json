@@ -47,6 +47,7 @@
     "phonePlaceholder": "Phone number",
     "payment": "Payment",
     "creditCard": "Credit Card",
+    "creditCardDescription": "Enter your credit card information below.",
     "cardNumber": "Card number",
     "cardNumberPlaceholder": "Card number",
     "expirationDate": "Expiration date (MM / YY)",
