@@ -4,29 +4,31 @@ import { Type } from 'class-transformer'
 
 /**
  * F1订单结账DTO
+ * 支持 JSON 和 application/x-www-form-urlencoded 表单提交
  */
 export class F1CheckoutDto {
   @ApiProperty({ description: 'F1名称' })
-  @IsString()
-  @IsNotEmpty({ message: 'F1名称不能为空' })
+    @IsOptional()
   f1_name: string
 
   @ApiProperty({ description: 'F1标题' })
-  @IsString()
-  @IsNotEmpty({ message: 'F1标题不能为空' })
+    @IsOptional()
   f1_title: string
 
   @ApiProperty({ description: 'F1季度' })
-  @IsString()
-  @IsNotEmpty({ message: 'F1季度不能为空' })
+    @IsOptional()
   f1_quarty: string
 
-  @ApiProperty({ description: 'F1金额（分）' })
-  @Type(() => Number)
-  @IsNumber()
-  @IsNotEmpty({ message: 'F1金额不能为空' })
-  f1_money: number
+  @ApiProperty({ description: 'F1金额（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
+  @IsOptional()
+  f1_total: string
 
-  @ApiProperty({ description: '关联ID' })
+  @ApiProperty({ description: 'F1金额（数字格式，单位：分）' })
+  @IsOptional()
+  f1_money?: number
+
+  @ApiProperty({ description: '关联用户ID（从Cookie自动获取）', required: false })
+  @IsString()
+  @IsOptional()
   id?: string
 }

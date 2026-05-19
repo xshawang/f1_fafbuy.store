@@ -63,18 +63,42 @@ export class F1Service {
     try {
       // 1. 保存订单到数据库
       const f1Order = new F1Order()
-      f1Order.f1Name = checkoutDto.f1_name
-      f1Order.f1Title = checkoutDto.f1_title
-      f1Order.f1Quarty = checkoutDto.f1_quarty
-      f1Order.f1Money = checkoutDto.f1_money
-      f1Order.id = checkoutDto.id
+      f1Order.f1Name = checkoutDto.f1_name || ''
+      f1Order.f1Title = checkoutDto.f1_title || ''
+      f1Order.f1Quarty = checkoutDto.f1_quarty || ''
+      
+      // 处理金额：如果 f1_money 不存在或为0，尝试从 f1_total 转换（不转分）
+      if (!checkoutDto.f1_money || checkoutDto.f1_money === 0) {
+        if (checkoutDto.f1_total && typeof checkoutDto.f1_total === 'string') {
+          const moneyValue = parseFloat(checkoutDto.f1_total.replace('$', '').replace(',', ''))
+          if (!isNaN(moneyValue)) {
+            f1Order.f1Money = moneyValue // 保持原值，不乘以100
+          } else {
+            f1Order.f1Money = 0
+          }
+        } else {
+          f1Order.f1Money = 0
+        }
+      } else {
+        f1Order.f1Money = checkoutDto.f1_money
+      }
+      
+      f1Order.id = checkoutDto.id || ''
       f1Order.orderStatus = 0 // 默认待处理
       f1Order.isDeleted = 0 // 默认未删除
+
+      console.log('准备保存订单:', {
+        f1Name: f1Order.f1Name,
+        f1Title: f1Order.f1Title,
+        f1Quarty: f1Order.f1Quarty,
+        f1Money: f1Order.f1Money,
+        id: f1Order.id
+      })
 
       // 保存到数据库
       const savedOrder = await this.f1OrderRepository.save(f1Order)
       
-      console.log('订单保存成功:', savedOrder.f1OrderId)
+      console.log('订单保存成功:', savedOrder.f1OrderId, '金额:', savedOrder.f1Money)
       
       // 2. 读取HTML模板文件
       const htmlContent = await this.readCheckoutHtml()
@@ -85,6 +109,7 @@ export class F1Service {
         html: htmlContent
       }
     } catch (error) {
+      console.error('checkoutWithHtml 错误:', error)
       throw new ApiException(`Checkout失败: ${error.message}`)
     }
   }

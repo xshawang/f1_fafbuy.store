@@ -7,6 +7,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse()
+    
+    // 检查是否已经发送响应，避免 headers already sent 错误
+    if (response.headersSent) {
+      return
+    }
+    
     const { status, result } = this.errorResult(exception)
     response.header('Content-Type', 'application/json; charset=utf-8')
     response.status(status).json(result)

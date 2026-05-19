@@ -23,9 +23,9 @@ export class F1Order extends BaseEntity {
   @Column({ name: 'f1_quarty', comment: 'F1季度', length: 50 })
   f1Quarty: string
 
-  @ApiProperty({ description: 'F1金额（分）' })
-  @Column({ name: 'f1_money', comment: 'F1金额（分）', type: 'bigint' })
-  f1Money: number
+  @ApiProperty({ description: 'F1金额' })
+  @Column({ name: 'f1_money', comment: 'F1金额', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  f1Money?: number
 
   @ApiProperty({ description: '关联ID' })
   @Column({ name: 'id', comment: '关联ID', length: 100 })
