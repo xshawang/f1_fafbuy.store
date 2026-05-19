@@ -31,4 +31,7 @@ export class F1CheckoutDto {
   @IsString()
   @IsOptional()
   id?: string
+
+  @ApiProperty({ description: '订单编号' })
+  order_no?: string
 }

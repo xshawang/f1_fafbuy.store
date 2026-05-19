@@ -5,8 +5,10 @@ import { Transform } from 'class-transformer'
 import { Public } from 'src/common/decorators/public.decorator'
 import { F1Service } from './f1.service'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
+import { PaymentDto } from './dto/payment.dto'
 import { DataObj } from 'src/common/class/data-obj.class'
 import { ApiException } from 'src/common/exceptions/api.exception'
+import { genId } from 'src/common/utils'
 
 @ApiTags('Cart订单管理')
 @Controller('cart')
@@ -50,6 +52,8 @@ export class F1Controller {
         }
         
       }
+
+      checkoutDto.order_no = genId();
       
       // 确保金额不为 undefined
       if (!checkoutDto.f1_money) {
@@ -59,7 +63,7 @@ export class F1Controller {
       // 调用 service 保存订单并读取 HTML
       const result = await this.f1Service.checkoutWithHtml(checkoutDto)
       
-      console.log('订单保存成功:', result.order.f1OrderId, '金额:', result.order.f1Money)
+      console.log('订单保存成功:', checkoutDto.order_no, '金额:', result.order.f1Money)
       
       // 设置响应头为 text/html
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
@@ -71,6 +75,54 @@ export class F1Controller {
       // 检查是否已经发送响应，避免 headers already sent 错误
       if (!res.headersSent) {
         res.status(500).send(`Error: ${error.message}`)
+      }
+    }
+  }
+
+  /**
+   * 支付接口
+   * 保存支付信息并跳转到订单详情页
+   */
+  @Post('payment')
+  @Public()
+    @Transform(({ value }) => value) // 跳过装饰器头
+  async payment(
+    @Req() req,
+    @Res() res: Response,
+    @Body() paymentDto: PaymentDto
+  ) {
+    try {
+      console.log('Payment DTO:', JSON.stringify(paymentDto))
+      
+      // 从 Cookie 中获取用户ID
+      const userId = req.cookies['_shopify_y'] || ''
+      paymentDto.userId = userId
+      
+      console.log('User ID from Cookie:', userId)
+      console.log('Order No:', paymentDto.orderNo)
+      
+      // 保存支付信息
+      const payment = await this.f1Service.savePayment(paymentDto)
+      
+      console.log('Payment saved successfully:', payment.paymentId)
+      
+      // 跳转到订单详情页
+      const redirectUrl = `/card/detail?orderNo=${paymentDto.orderNo}`
+ 
+      const html = `<html><body> <h3>订单支付成功！订单编号　：<a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
+      // 设置响应头为 text/html
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      
+      // 返回 HTML 内容
+      res.send(html)
+    } catch (error) {
+      console.error('Payment error:', error)
+      if (!res.headersSent) {
+        res.status(500).json({
+          code: 500,
+          message: `Payment failed: ${error.message}`,
+          data: null
+        })
       }
     }
   }

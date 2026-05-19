@@ -39,9 +39,7 @@ export function convertToBrl(amount: number, fromCurrency: string) {
   };
 }
 
-// 使用示例
-// const result = convertToBrl(100, 'USD');
-// console.log(result.formatted); // 输出: "R$ 497,00"
+ 
 /**
  * 获取雪花id
  */
