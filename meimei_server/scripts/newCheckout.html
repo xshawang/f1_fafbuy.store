@@ -1212,6 +1212,7 @@
                                     <div
                                         class="address-and-hotel open flex-column margin-bottom-0 padding-bottom-20 border-bottom-ccc section-body">
                                         <h2 class="expandable_header contact-information">Contact Information</h2>
+                                         <form id="checkoutForm" method="post" action="/payments" onSubmit="return handleSubmit1();">
                                         <section id="emailPhone" class="checkout-address section column is-6 pl-0">
                                             <div id="checkoutEmail" class="required-field field"><input
                                                     id="checkout_email_address" type="email"
@@ -1225,7 +1226,7 @@
 
                                         <!-- 信用卡输出区域-->
                                         <section id="checkoutAddress1" class="open info-body section column is-6 pl-0">
-                                            <form id="checkoutForm" method="post" action="/payments" onSubmit="return handleSubmit1();">
+                                           
                                             
                                             <div class="credit-card-section" style="background: #fff; padding: 0;">
                                                 <!-- 标题 -->
@@ -1373,8 +1374,7 @@
                                                                                 href="https://store.fafbuy.store/en/packages/103383/path"
                                                                                 class="in-cart-package-link"
                                                                                 role="button">
-                                                                                <p
-                                                                                    class="name flex-grow font-weight-600">
+                                                                                <p class="name flex-grow font-weight-600">
                                                                                     F1® Experiences Live | Grandstand 1
                                                                                 </p>
                                                                             </a><!----><!---->
@@ -1415,10 +1415,7 @@
                                                                 <p class="">Subtotal</p>
                                                                 <p class="">$4,826.00</p>
                                                             </div><!----><!----><!----><!----><!----><!----><!---->
-                                                            <div class="cart-footer padding-0 fee">
-                                                                <p class="">Processing Fee</p>
-                                                                <p class="">$142.37</p>
-                                                            </div><!----><!---->
+                                                            
                                                         </div>
                                                         <div class="total-charge">
                                                             <div class="cart-footer total" header="Your Total"

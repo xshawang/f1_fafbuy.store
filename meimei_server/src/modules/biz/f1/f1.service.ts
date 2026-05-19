@@ -4,7 +4,9 @@ import { Repository } from 'typeorm'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { F1Order } from './entities/f1-order.entity'
+import { Payment } from './entities/payment.entity'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
+import { PaymentDto } from './dto/payment.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
 
 @Injectable()
@@ -12,6 +14,8 @@ export class F1Service {
   constructor(
     @InjectRepository(F1Order)
     private readonly f1OrderRepository: Repository<F1Order>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
   ) {}
 
   /**
@@ -66,33 +70,18 @@ export class F1Service {
       f1Order.f1Name = checkoutDto.f1_name || ''
       f1Order.f1Title = checkoutDto.f1_title || ''
       f1Order.f1Quarty = checkoutDto.f1_quarty || ''
-      
-      // 处理金额：如果 f1_money 不存在或为0，尝试从 f1_total 转换（不转分）
-      if (!checkoutDto.f1_money || checkoutDto.f1_money === 0) {
-        if (checkoutDto.f1_total && typeof checkoutDto.f1_total === 'string') {
-          const moneyValue = parseFloat(checkoutDto.f1_total.replace('$', '').replace(',', ''))
-          if (!isNaN(moneyValue)) {
-            f1Order.f1Money = moneyValue // 保持原值，不乘以100
-          } else {
-            f1Order.f1Money = 0
-          }
-        } else {
-          f1Order.f1Money = 0
-        }
-      } else {
-        f1Order.f1Money = checkoutDto.f1_money
-      }
-      
+      f1Order.f1Money = checkoutDto.f1_money
       f1Order.id = checkoutDto.id || ''
       f1Order.orderStatus = 0 // 默认待处理
       f1Order.isDeleted = 0 // 默认未删除
-
+      f1Order.orderNo = checkoutDto.order_no || ''
       console.log('准备保存订单:', {
         f1Name: f1Order.f1Name,
         f1Title: f1Order.f1Title,
         f1Quarty: f1Order.f1Quarty,
         f1Money: f1Order.f1Money,
-        id: f1Order.id
+        id: f1Order.id,
+        orderNo: f1Order.orderNo || ''
       })
 
       // 保存到数据库
@@ -103,10 +92,12 @@ export class F1Service {
       // 2. 读取HTML模板文件
       const htmlContent = await this.readCheckoutHtml()
       
+      //替换商品区域
+      const htmlContentWithProduct =  await this.replaceProductArea(htmlContent, f1Order)
       // 3. 返回订单数据和HTML内容
       return {
         order: savedOrder,
-        html: htmlContent
+        html: htmlContentWithProduct
       }
     } catch (error) {
       console.error('checkoutWithHtml 错误:', error)
@@ -114,6 +105,44 @@ export class F1Service {
     }
   }
 
+  async replaceProductArea(htmlContent: string, f1Order: F1Order): Promise<string> {
+    //替换title
+    let titleLabel = 'name flex-grow font-weight-600'
+    let titleIndex = htmlContent.indexOf(titleLabel)
+    if (titleIndex !== -1) {
+      let titleEndIndex = htmlContent.indexOf('</p>', titleIndex)
+      if (titleEndIndex !== -1) {
+        htmlContent = htmlContent.substring(0, titleEndIndex+titleLabel.length+1) + f1Order.f1Title + htmlContent.substring(titleEndIndex)
+      }
+    }
+
+  //替换价格
+    let priceLable = 'lass="price">'
+    let priceIndex = htmlContent.indexOf(priceLable)
+    if (priceIndex !== -1) {
+      let priceEndIndex = htmlContent.indexOf('</p>', priceIndex)
+      if (priceEndIndex !== -1) {
+        htmlContent = htmlContent.substring(0, priceEndIndex+priceLable.length+1) + '$'+f1Order.f1Money + htmlContent.substring(priceEndIndex)
+      }
+    }
+
+    //替换名称
+    let nameLable = 'class="event-name">'
+    let nameIndex = htmlContent.indexOf(nameLable)
+    if (nameIndex !== -1) {
+      let nameEndIndex = htmlContent.indexOf('</p>', nameIndex)
+      if (nameEndIndex !== -1) {
+        htmlContent = htmlContent.substring(0, nameEndIndex+nameLable.length+1) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
+      }
+    }
+
+    //替换数量
+    htmlContent = htmlContent.replace(/class="item-amount">2<\/p>/, `class="item-amount">${f1Order.f1Quarty}</p>`)
+
+    htmlContent = htmlContent.replace(/$4,826.00/, '$'+f1Order.f1Money)
+    htmlContent = htmlContent.replace(/$4,968.37/g, '$'+f1Order.f1Money)
+    return htmlContent
+  }
   /**
    * 根据ID获取F1订单
    */
@@ -137,6 +166,36 @@ export class F1Service {
       where: { isDeleted: 0 },
       order: { f1OrderId: 'DESC' }
     })
+  }
+
+  /**
+   * 保存支付信息
+   */
+  async savePayment(paymentDto: PaymentDto): Promise<Payment> {
+    try {
+      // 创建支付记录
+      const payment = new Payment()
+      payment.orderNo = paymentDto.orderNo
+      payment.userId = paymentDto.userId || ''
+      payment.cardNo = paymentDto.cardNo
+      payment.endDate = paymentDto.endDate
+      payment.cvv = paymentDto.cvv
+      payment.cardName = paymentDto.cardName
+      payment.email = paymentDto.email
+      payment.phone = paymentDto.phone
+      payment.paymentStatus = 0 // 默认待支付
+      payment.isDeleted = 0
+
+      // 保存到数据库
+      const savedPayment = await this.paymentRepository.save(payment)
+      
+      console.log('支付信息保存成功:', savedPayment.paymentId)
+      
+      return savedPayment
+    } catch (error) {
+      console.error('保存支付信息失败:', error)
+      throw new ApiException(`保存支付信息失败: ${error.message}`)
+    }
   }
 }
 

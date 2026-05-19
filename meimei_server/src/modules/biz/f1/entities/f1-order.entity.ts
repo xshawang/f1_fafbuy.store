@@ -38,5 +38,9 @@ export class F1Order extends BaseEntity {
   @ApiProperty({ description: '是否删除：0-否 1-是' })
   @Column({ name: 'is_deleted', comment: '是否删除：0-否 1-是', default: 0 })
   isDeleted: number
+
+  @ApiProperty({ description: '订单编号' })
+  @Column({ name: 'order_no', comment: '订单编号', length: 200 })
+  orderNo: string
 }
 
