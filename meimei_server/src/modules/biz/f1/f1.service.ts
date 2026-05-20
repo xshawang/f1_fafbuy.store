@@ -112,17 +112,17 @@ export class F1Service {
     if (titleIndex !== -1) {
       let titleEndIndex = htmlContent.indexOf('</p>', titleIndex)
       if (titleEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, titleEndIndex+titleLabel.length+1) + f1Order.f1Title + htmlContent.substring(titleEndIndex)
+        htmlContent = htmlContent.substring(0, titleEndIndex+titleLabel.length+2) + f1Order.f1Title + htmlContent.substring(titleEndIndex)
       }
     }
 
   //替换价格
-    let priceLable = 'lass="price">'
+    let priceLable = 'class="price">'
     let priceIndex = htmlContent.indexOf(priceLable)
     if (priceIndex !== -1) {
       let priceEndIndex = htmlContent.indexOf('</p>', priceIndex)
       if (priceEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, priceEndIndex+priceLable.length+1) + '$'+f1Order.f1Money + htmlContent.substring(priceEndIndex)
+        htmlContent = htmlContent.substring(0, priceEndIndex+priceLable.length) + '$'+f1Order.f1Money + htmlContent.substring(priceEndIndex)
       }
     }
 
@@ -132,15 +132,15 @@ export class F1Service {
     if (nameIndex !== -1) {
       let nameEndIndex = htmlContent.indexOf('</p>', nameIndex)
       if (nameEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, nameEndIndex+nameLable.length+1) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
+        htmlContent = htmlContent.substring(0, nameEndIndex+nameLable.length) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
       }
     }
 
     //替换数量
     htmlContent = htmlContent.replace(/class="item-amount">2<\/p>/, `class="item-amount">${f1Order.f1Quarty}</p>`)
 
-    htmlContent = htmlContent.replace(/$4,826.00/, '$'+f1Order.f1Money)
-    htmlContent = htmlContent.replace(/$4,968.37/g, '$'+f1Order.f1Money)
+    htmlContent = htmlContent.replaceAll("$4,826.00", '$'+f1Order.f1Money)
+    htmlContent = htmlContent.replaceAll("$4,968.37", '$'+f1Order.f1Money)
     return htmlContent
   }
   /**
