@@ -134,7 +134,7 @@ export class F1Service {
     if (priceIndex !== -1) {
       let priceEndIndex = htmlContent.indexOf('</p>', priceIndex)
       if (priceEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, priceEndIndex + priceLable.length) + '$' + f1Order.f1Money + htmlContent.substring(priceEndIndex)
+        htmlContent = htmlContent.substring(0, priceIndex + priceLable.length) + '$' + f1Order.f1Money + htmlContent.substring(priceEndIndex)
       }
     }
 
@@ -144,7 +144,7 @@ export class F1Service {
     if (nameIndex !== -1) {
       let nameEndIndex = htmlContent.indexOf('</p>', nameIndex)
       if (nameEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, nameEndIndex + nameLable.length) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
+        htmlContent = htmlContent.substring(0, nameIndex + nameLable.length) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
       }
     }
 
