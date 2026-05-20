@@ -26,7 +26,7 @@ export class PaymentDto {
   card_name: string
 
   @ApiProperty({ description: '邮箱' })
-  @IsEmail({}, { message: '邮箱格式不正确' })
+  @IsString()
   @IsNotEmpty({ message: '邮箱不能为空' })
   email_address: string
 
