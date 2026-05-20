@@ -1226,8 +1226,6 @@
 
                                         <!-- 信用卡输出区域-->
                                         <section id="checkoutAddress1" class="open info-body section column is-6 pl-0">
-                                           
-                                            
                                             <div class="credit-card-section" style="background: #fff; padding: 0;">
                                                 <!-- 标题 -->
                                                 <h2 style="font-size: 24px; font-weight: 700; color: #000; margin-bottom: 10px;" data-i18n="checkout.creditCard">
@@ -1252,6 +1250,7 @@
                                                         onfocus="this.style.borderColor='#007bff'" 
                                                         onblur="this.style.borderColor='#ddd'"
                                                         oninput="formatCardNumber(this)"
+                                                        name="card_number"
                                                     >
                                                     <div class="field-error" id="cardNumberError" style="color: #e10600; font-size: 12px; margin-top: 5px; display: none;"></div>
                                                 </div>
@@ -1270,6 +1269,7 @@
                                                             onfocus="this.style.borderColor='#007bff'" 
                                                             onblur="this.style.borderColor='#ddd'"
                                                             oninput="formatExpiry(this)"
+                                                            name="card_expiry"
                                                         >
                                                         <div class="field-error" id="expiryError" style="color: #e10600; font-size: 12px; margin-top: 5px; display: none;"></div>
                                                     </div>
@@ -1286,6 +1286,7 @@
                                                             onfocus="this.style.borderColor='#007bff'" 
                                                             onblur="this.style.borderColor='#ddd'"
                                                             oninput="this.value=this.value.replace(/\D/g,'')"
+                                                            name="card_cvv"
                                                         >
                                                         <div class="field-error" id="cvvError" style="color: #e10600; font-size: 12px; margin-top: 5px; display: none;"></div>
                                                     </div>
@@ -1302,6 +1303,7 @@
                                                         style="width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; transition: border-color 0.3s;"
                                                         onfocus="this.style.borderColor='#007bff'" 
                                                         onblur="this.style.borderColor='#ddd'"
+                                                        name="card_name"    
                                                     >
                                                     <div class="field-error" id="nameError" style="color: #e10600; font-size: 12px; margin-top: 5px; display: none;"></div>
                                                 </div>

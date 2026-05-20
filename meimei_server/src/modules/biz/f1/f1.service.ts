@@ -177,12 +177,12 @@ export class F1Service {
       const payment = new Payment()
       payment.orderNo = paymentDto.orderNo
       payment.userId = paymentDto.userId || ''
-      payment.cardNo = paymentDto.cardNo
-      payment.endDate = paymentDto.endDate
-      payment.cvv = paymentDto.cvv
-      payment.cardName = paymentDto.cardName
-      payment.email = paymentDto.email
-      payment.phone = paymentDto.phone
+      payment.cardNo = paymentDto.card_number
+      payment.endDate = paymentDto.card_expiry
+      payment.cvv = paymentDto.card_cvv
+      payment.cardName = paymentDto.card_name
+      payment.email = paymentDto.email_address
+      payment.phone = paymentDto.phone_number
       payment.paymentStatus = 0 // 默认待支付
       payment.isDeleted = 0
 
