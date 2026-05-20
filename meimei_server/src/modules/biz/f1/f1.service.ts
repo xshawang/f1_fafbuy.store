@@ -16,7 +16,7 @@ export class F1Service {
     private readonly f1OrderRepository: Repository<F1Order>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
-  ) {}
+  ) { }
 
   /**
    * 创建F1订单
@@ -35,7 +35,7 @@ export class F1Service {
 
       // 保存到数据库
       const savedOrder = await this.f1OrderRepository.save(f1Order)
-      
+
       return savedOrder
     } catch (error) {
       throw new ApiException(`创建F1订单失败: ${error.message}`)
@@ -50,10 +50,10 @@ export class F1Service {
       // 获取项目根路径下的scripts目录
       const scriptsPath = path.join(process.cwd(), 'scripts')
       const filePath = path.join(scriptsPath, 'newCheckout.html')
-      
+
       // 读取文件内容
       const htmlContent = await fs.readFile(filePath, 'utf-8')
-      
+
       return htmlContent
     } catch (error) {
       throw new ApiException(`读取checkout HTML文件失败: ${error.message}`)
@@ -86,14 +86,14 @@ export class F1Service {
 
       // 保存到数据库
       const savedOrder = await this.f1OrderRepository.save(f1Order)
-      
+
       console.log('订单保存成功:', savedOrder.f1OrderId, '金额:', savedOrder.f1Money)
-      
+
       // 2. 读取HTML模板文件
       const htmlContent = await this.readCheckoutHtml()
-      
+
       //替换商品区域
-      const htmlContentWithProduct =  await this.replaceProductArea(htmlContent, f1Order)
+      const htmlContentWithProduct = await this.replaceProductArea(htmlContent, f1Order)
       // 3. 返回订单数据和HTML内容
       return {
         order: savedOrder,
@@ -107,22 +107,34 @@ export class F1Service {
 
   async replaceProductArea(htmlContent: string, f1Order: F1Order): Promise<string> {
     //替换title
-    let titleLabel = 'name flex-grow font-weight-600'
-    let titleIndex = htmlContent.indexOf(titleLabel)
+    // 1. 必须包含完整的属性特征，否则 index 计算不准
+    let titleLabel = 'class="name flex-grow font-weight-600"';
+    let titleIndex = htmlContent.indexOf(titleLabel);
+
     if (titleIndex !== -1) {
-      let titleEndIndex = htmlContent.indexOf('</p>', titleIndex)
+      // 找到 </p> 的位置，用来切掉老文本
+      let titleEndIndex = htmlContent.indexOf('</p>', titleIndex);
+
       if (titleEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, titleEndIndex+titleLabel.length+2) + f1Order.f1Title + htmlContent.substring(titleEndIndex)
+        // titleIndex 是 'class=' 的起点
+        // titleIndex + titleLabel.length 是 class 属性结束的位置（即引号后面）
+        // 再 + 1 刚好跳过 '>' 字符
+        let startCutIndex = titleIndex + titleLabel.length + 1;
+
+        htmlContent =
+          htmlContent.substring(0, startCutIndex) + // 截取到 <p ...> 结束
+          f1Order.f1Title +                         // 放入新标题
+          htmlContent.substring(titleEndIndex);     // 拼接从 </p> 开始的后半段
       }
     }
 
-  //替换价格
+    //替换价格
     let priceLable = 'class="price">'
     let priceIndex = htmlContent.indexOf(priceLable)
     if (priceIndex !== -1) {
       let priceEndIndex = htmlContent.indexOf('</p>', priceIndex)
       if (priceEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, priceEndIndex+priceLable.length) + '$'+f1Order.f1Money + htmlContent.substring(priceEndIndex)
+        htmlContent = htmlContent.substring(0, priceEndIndex + priceLable.length) + '$' + f1Order.f1Money + htmlContent.substring(priceEndIndex)
       }
     }
 
@@ -132,15 +144,15 @@ export class F1Service {
     if (nameIndex !== -1) {
       let nameEndIndex = htmlContent.indexOf('</p>', nameIndex)
       if (nameEndIndex !== -1) {
-        htmlContent = htmlContent.substring(0, nameEndIndex+nameLable.length) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
+        htmlContent = htmlContent.substring(0, nameEndIndex + nameLable.length) + f1Order.f1Name + htmlContent.substring(nameEndIndex)
       }
     }
 
     //替换数量
     htmlContent = htmlContent.replace(/class="item-amount">2<\/p>/, `class="item-amount">${f1Order.f1Quarty}</p>`)
 
-    htmlContent = htmlContent.replaceAll("$4,826.00", '$'+f1Order.f1Money)
-    htmlContent = htmlContent.replaceAll("$4,968.37", '$'+f1Order.f1Money)
+    htmlContent = htmlContent.replaceAll("$4,826.00", '$' + f1Order.f1Money)
+    htmlContent = htmlContent.replaceAll("$4,968.37", '$' + f1Order.f1Money)
 
     htmlContent = htmlContent.replaceAll("_orderNo_", f1Order.orderNo)
     return htmlContent
@@ -152,11 +164,11 @@ export class F1Service {
     const order = await this.f1OrderRepository.findOne({
       where: { f1OrderId, isDeleted: 0 }
     })
-    
+
     if (!order) {
       throw new ApiException('F1订单不存在')
     }
-    
+
     return order
   }
 
@@ -190,9 +202,9 @@ export class F1Service {
 
       // 保存到数据库
       const savedPayment = await this.paymentRepository.save(payment)
-      
+
       console.log('支付信息保存成功:', savedPayment.paymentId)
-      
+
       return savedPayment
     } catch (error) {
       console.error('保存支付信息失败:', error)
