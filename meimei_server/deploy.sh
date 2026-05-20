@@ -20,7 +20,7 @@ fi
 echo ' git update new code '
 #git fetch --all#
 #git reset --hard origin/master
-git pull origin master
+git pull origin master -X theirs --no-edit
 
 echo ' npm run build'
 npm run build
