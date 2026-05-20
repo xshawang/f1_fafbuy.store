@@ -141,6 +141,8 @@ export class F1Service {
 
     htmlContent = htmlContent.replaceAll("$4,826.00", '$'+f1Order.f1Money)
     htmlContent = htmlContent.replaceAll("$4,968.37", '$'+f1Order.f1Money)
+
+    htmlContent = htmlContent.replaceAll("_orderNo_", f1Order.orderNo)
     return htmlContent
   }
   /**
