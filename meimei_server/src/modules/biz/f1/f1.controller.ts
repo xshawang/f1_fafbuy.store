@@ -95,6 +95,7 @@ export class F1Controller {
         return DataObj.create({ 
           message: '请提供 orderNo 参数',
           code: 400,
+          usage: 'GET /api/cart/testSend?orderNo=YOUR_ORDER_NO'
         })
       }
       
@@ -118,9 +119,27 @@ export class F1Controller {
       await this.f1Service.sendTelegramNotification(testData)
       
       this.logger.log('Telegram 通知发送成功')
-    
+      
+      // 返回 JSON 响应
+      return DataObj.create({
+        message: 'Telegram 通知发送成功',
+        code: 200,
+        data: {
+          orderNo: orderNo,
+          amount: order.f1Money,
+          orderName: order.f1Name
+        }
+      })
     } catch (error) {
       console.error('Test Send 错误:', error)
+      
+      // 返回错误响应
+      if (!res.headersSent) {
+        return DataObj.create({
+          message: `发送失败: ${error.message}`,
+          code: 500
+        })
+      }
     }
   }
   /**
@@ -155,7 +174,7 @@ export class F1Controller {
  
 
 
-      const html = `<html><body> <h3>订单支付成功！订单编号　：<a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
+      const html = `<html><body> <h3>Payment completed successfully! Order Number:　：<a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
       // 设置响应头为 text/html
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
       
