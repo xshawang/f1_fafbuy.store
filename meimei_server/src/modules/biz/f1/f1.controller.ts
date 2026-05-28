@@ -1,4 +1,4 @@
-import { Controller, Get, Body, Req, Res, Post, Put, Delete, Headers, Query,Logger } from '@nestjs/common'
+import { Controller, Get, Body, Req, Res, Post, Put, Delete, Headers, Query, Logger } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
 import { Response } from 'express'
 import { Transform } from 'class-transformer'
@@ -6,6 +6,7 @@ import { Public } from 'src/common/decorators/public.decorator'
 import { F1Service } from './f1.service'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { PaymentDto } from './dto/payment.dto'
+import { OrderQueryDto } from './dto/order-query.dto'
 import { DataObj } from 'src/common/class/data-obj.class'
 import { ApiException } from 'src/common/exceptions/api.exception'
 import { genId } from 'src/common/utils'
@@ -189,6 +190,27 @@ export class F1Controller {
           data: null
         })
       }
+    }
+  }
+
+   
+  /**
+   * 订单列表查询接口
+   */
+  @Get('list')
+  @Public()
+  async getOrderList(
+    @Query() queryDto: OrderQueryDto
+  ) {
+    try {
+      this.logger.log('Query order list:', JSON.stringify(queryDto))
+      
+      const result = await this.f1Service.findOrders(queryDto)
+      
+      return DataObj.create(result)
+    } catch (error) {
+      this.logger.error('Get order list error:', error)
+      throw new ApiException(`查询订单列表失败: ${error.message}`)
     }
   }
 
