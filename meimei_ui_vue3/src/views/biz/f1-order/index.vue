@@ -55,6 +55,11 @@
           <el-tag v-else type="info">未知</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="订单金额" align="center" prop="f1Money" width="150">
+        <template #default="scope">
+          <span class="money-text">${{ scope.row.f1Money?.toFixed(2) || '0.00' }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="180">
         <template #default="scope">
           <span>{{ parseTime(scope.row.createTime) }}</span>
