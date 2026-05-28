@@ -144,6 +144,19 @@ export const dynamicRoutes = [
   //     },
   //   ],
   // },
+  {
+    path: '/biz/f1-order',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/biz/f1-order/index'),
+        name: 'F1OrderList',
+        meta: { title: 'F1订单管理', activeMenu: '/biz/f1-order' },
+      },
+    ],
+  },
   // {
   //   path: '/biz/order',
   //   component: Layout,

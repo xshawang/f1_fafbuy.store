@@ -1,12 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Repository, Between } from 'typeorm'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { F1Order } from './entities/f1-order.entity'
 import { Payment } from './entities/payment.entity'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { PaymentDto } from './dto/payment.dto'
+import { OrderQueryDto, OrderResponseDto, PaginatedResponseDto } from './dto/order-query.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
 import { firstValueFrom } from 'rxjs';
 import Redis from 'ioredis';
@@ -180,6 +181,65 @@ export class F1Service {
     }
 
     return order
+  }
+
+  /**
+   * 分页查询订单列表
+   */
+  async findOrders(queryDto: OrderQueryDto): Promise<PaginatedResponseDto> {
+    try {
+      const { orderNo, startDate, endDate, pageNum = 1, pageSize = 10 } = queryDto
+
+      // 构建查询条件
+      const where: any = {
+        isDeleted: 0
+      }
+
+      // 订单编号查询
+      if (orderNo) {
+        where.orderNo = orderNo
+      }
+
+      // 日期范围查询
+      if (startDate && endDate) {
+        where.createTime = Between(new Date(startDate), new Date(endDate))
+      } else if (startDate) {
+        where.createTime = Between(new Date(startDate), new Date())
+      } else if (endDate) {
+        where.createTime = Between(new Date('2000-01-01'), new Date(endDate))
+      }
+
+      // 查询总数
+      const total = await this.f1OrderRepository.count({ where })
+
+      // 分页查询
+      const [orders, count] = await this.f1OrderRepository.findAndCount({
+        where,
+        order: { createTime: 'DESC' },
+        skip: (pageNum - 1) * pageSize,
+        take: pageSize
+      })
+
+      // 转换为响应 DTO
+      const list: OrderResponseDto[] = orders.map(order => ({
+        orderNo: order.orderNo,
+        f1Money: order.f1Money,
+        f1Name: order.f1Name,
+        f1Title: order.f1Title,
+        createTime: order.createTime,
+        orderStatus: order.orderStatus
+      }))
+
+      return {
+        list,
+        total: count,
+        pageNum,
+        pageSize
+      }
+    } catch (error) {
+      this.logger.error('查询订单列表失败:', error)
+      throw new ApiException(`查询订单列表失败: ${error.message}`)
+    }
   }
 
   /**
