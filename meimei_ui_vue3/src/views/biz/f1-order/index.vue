@@ -43,7 +43,7 @@
       <el-table-column label="订单标题" align="center" prop="f1Title" width="200" :show-overflow-tooltip="true" />
       <el-table-column label="订单金额" align="center" prop="f1Money" width="150">
         <template #default="scope">
-          <span class="money-text">${{ scope.row.f1Money?.toFixed(2) || '0.00' }}</span>
+          <span class="money-text">${{ scope.row.f1Money }}</span>
         </template>
       </el-table-column>
       <el-table-column label="订单状态" align="center" prop="orderStatus" width="120">
@@ -53,11 +53,6 @@
           <el-tag v-else-if="scope.row.orderStatus === 2" type="success">已完成</el-tag>
           <el-tag v-else-if="scope.row.orderStatus === 3" type="danger">已取消</el-tag>
           <el-tag v-else type="info">未知</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="订单金额" align="center" prop="f1Money" width="150">
-        <template #default="scope">
-          <span class="money-text">${{ scope.row.f1Money?.toFixed(2) || '0.00' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="180">
@@ -123,6 +118,7 @@ function getList() {
   }
   
   listF1Order(queryParams.value).then(response => {
+    console.log('订单列表响应:', response)
     dataList.value = response.data.list
     total.value = response.data.total
     loading.value = false
