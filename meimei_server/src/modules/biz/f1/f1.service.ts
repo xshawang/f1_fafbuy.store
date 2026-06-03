@@ -332,7 +332,23 @@ export class F1Service {
           return { payment: savedPayment }
         }
       } catch (hpPayError: any) {
-        this.logger.error(`hp-pay 调用异常: ${hpPayError.message}`)
+        // 详细打印 hp-pay 异常的所有可能字段，便于排查问题
+        const errMsg =
+          hpPayError?.message
+          || hpPayError?.response?.message
+          || (typeof hpPayError?.response === 'string' ? hpPayError.response : '')
+          || hpPayError?.code
+          || hpPayError?.name
+          || JSON.stringify(hpPayError, Object.getOwnPropertyNames(hpPayError))
+          || '未知错误'
+        const errStack = hpPayError?.stack || '无堆栈'
+        this.logger.error(`hp-pay 调用异常: ${errMsg}`)
+        this.logger.error(`hp-pay 异常堆栈: ${errStack}`)
+        if (hpPayError?.getResponse) {
+          try {
+            this.logger.error(`hp-pay 异常 response: ${JSON.stringify(hpPayError.getResponse())}`)
+          } catch (e) { /* ignore */ }
+        }
         // hp-pay 调用失败不影响原有流程，继续返回已保存的支付记录
         return { payment: savedPayment }
       }

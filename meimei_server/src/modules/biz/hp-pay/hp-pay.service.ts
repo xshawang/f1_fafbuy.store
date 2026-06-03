@@ -83,24 +83,50 @@ export class HpPayService {
     }
 
     this.logger.log(`HP Pay request -> ${endpoint}, orderid=${payload.orderid || ''}`)
+    this.logger.log(`HP Pay request body: ${this.buildFormPayload(requestBody)}`)
 
-    const response = await firstValueFrom(
-      this.httpService.post(endpoint, this.buildFormPayload(requestBody), {
-        timeout,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        responseType: 'text',
-        transformResponse: [(data) => data],
-      }),
-    )
+    let response: any
+    try {
+      response = await firstValueFrom(
+        this.httpService.post(endpoint, this.buildFormPayload(requestBody), {
+          timeout,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          responseType: 'text',
+          transformResponse: [(data) => data],
+        }),
+      )
+    } catch (httpError: any) {
+      // 详细打印 HTTP 错误信息
+      const status = httpError?.response?.status
+      const statusText = httpError?.response?.statusText
+      const respBody = httpError?.response?.data
+      const errCode = httpError?.code
+      const errMsg = httpError?.message
+      this.logger.error(
+        `HP Pay HTTP 请求失败 -> endpoint=${endpoint}, orderid=${payload.orderid || ''}, ` +
+        `httpStatus=${status || 'N/A'}, statusText=${statusText || 'N/A'}, ` +
+        `errorCode=${errCode || 'N/A'}, errorMessage=${errMsg || 'N/A'}, ` +
+        `respBody=${typeof respBody === 'string' ? respBody.substring(0, 500) : JSON.stringify(respBody || {}).substring(0, 500)}`
+      )
+      throw new ApiException(
+        `HP Pay 请求失败: ${errMsg || errCode || 'unknown'}` +
+        (status ? ` (HTTP ${status})` : '') +
+        (respBody ? ` body=${typeof respBody === 'string' ? respBody.substring(0, 200) : JSON.stringify(respBody).substring(0, 200)}` : '')
+      )
+    }
+
+    this.logger.log(`HP Pay response: ${(response.data as string).substring(0, 500)}`)
 
     let data: HpPayResponse<T>
     try {
       data = JSON.parse(response.data as string)
     } catch (error) {
-      this.logger.error(`HP Pay response parse failed: ${response.data}`)
-      throw new ApiException('HP Pay 返回非 JSON 数据，无法解析')
+      this.logger.error(`HP Pay response parse failed, raw=${response.data}`)
+      throw new ApiException(
+        `HP Pay 返回非 JSON 数据: ${typeof response.data === 'string' ? response.data.substring(0, 200) : String(response.data)}`
+      )
     }
 
     const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)

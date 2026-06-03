@@ -25,6 +25,7 @@ export class F1Controller {
   @Post('checkoutHtml')
   @Transform(({ value }) => value) // 跳过装饰器头
   @Public() // 公开接口，无需认证
+  @Keep() // 跳过 ReponseTransformInterceptor，避免手动 res.send 后再次设置 headers
   async checkoutHtml(@Req() req,
     @Res() res: Response,
     @Body() checkoutDto: F1CheckoutDto) {
@@ -151,6 +152,7 @@ export class F1Controller {
   @Post('payment')
   @Public()
   @Transform(({ value }) => value) // 跳过装饰器头
+  @Keep() // 跳过 ReponseTransformInterceptor，避免手动 res.send/redirect 后再次设置 headers
   async payment(
     @Req() req,
     @Res() res: Response,
