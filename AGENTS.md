@@ -83,6 +83,7 @@ main                    # 生产环境（稳定版本）
 - `user`: 用户模块
 - `auth`: 认证授权
 - `config`: 配置相关
+- `hp-pay`: hp-pay 支付聚道 接口文档：（meimei_server/doc/hp-pay/README.md）
 
 **前端 (meimei_ui_vue3)**:
 - `order`: 订单管理

