@@ -82,8 +82,11 @@ export class HpPayService {
       sign: requestSign,
     }
 
-    this.logger.log(`HP Pay request -> ${endpoint}, orderid=${payload.orderid || ''}`)
-    this.logger.log(`HP Pay request body: ${this.buildFormPayload(requestBody)}`)
+    // [HP-PAY-V2] 版本标记，方便确认部署生效
+    console.log('[HP-PAY-V2] HP Pay request ->', endpoint, 'orderid=', payload.orderid || '')
+    console.log('[HP-PAY-V2] HP Pay request body:', this.buildFormPayload(requestBody))
+    this.logger.log(`[HP-PAY-V2] HP Pay request -> ${endpoint}, orderid=${payload.orderid || ''}`)
+    this.logger.log(`[HP-PAY-V2] HP Pay request body: ${this.buildFormPayload(requestBody)}`)
 
     let response: any
     try {
@@ -95,29 +98,54 @@ export class HpPayService {
           },
           responseType: 'text',
           transformResponse: [(data) => data],
+          // 让 axios 不要因为 4xx/5xx 抛错，把响应体也带回来
+          validateStatus: () => true,
         }),
       )
     } catch (httpError: any) {
-      // 详细打印 HTTP 错误信息
+      // 详细打印 HTTP 错误信息（仅网络层错误，如超时/DNS/连接被拒）
       const status = httpError?.response?.status
       const statusText = httpError?.response?.statusText
       const respBody = httpError?.response?.data
       const errCode = httpError?.code
       const errMsg = httpError?.message
+      const errName = httpError?.name
+      const errStack = httpError?.stack
+      console.error('[HP-PAY-V2] HTTP error:', {
+        endpoint,
+        orderid: payload.orderid,
+        status,
+        statusText,
+        errCode,
+        errMsg,
+        errName,
+        respBody: typeof respBody === 'string' ? respBody.substring(0, 500) : respBody,
+        stack: errStack,
+      })
       this.logger.error(
-        `HP Pay HTTP 请求失败 -> endpoint=${endpoint}, orderid=${payload.orderid || ''}, ` +
+        `[HP-PAY-V2] HP Pay HTTP 请求失败 -> endpoint=${endpoint}, orderid=${payload.orderid || ''}, ` +
         `httpStatus=${status || 'N/A'}, statusText=${statusText || 'N/A'}, ` +
-        `errorCode=${errCode || 'N/A'}, errorMessage=${errMsg || 'N/A'}, ` +
+        `errorCode=${errCode || 'N/A'}, errorName=${errName || 'N/A'}, errorMessage=${errMsg || 'N/A'}, ` +
         `respBody=${typeof respBody === 'string' ? respBody.substring(0, 500) : JSON.stringify(respBody || {}).substring(0, 500)}`
       )
       throw new ApiException(
-        `HP Pay 请求失败: ${errMsg || errCode || 'unknown'}` +
+        `HP Pay 请求失败: ${errMsg || errCode || errName || 'unknown'}` +
         (status ? ` (HTTP ${status})` : '') +
         (respBody ? ` body=${typeof respBody === 'string' ? respBody.substring(0, 200) : JSON.stringify(respBody).substring(0, 200)}` : '')
       )
     }
 
-    this.logger.log(`HP Pay response: ${(response.data as string).substring(0, 500)}`)
+    const respStatus = response?.status
+    const respHeaders = response?.headers
+    const rawBody = typeof response?.data === 'string' ? response.data : JSON.stringify(response?.data ?? '')
+    console.log('[HP-PAY-V2] HP Pay response:', { status: respStatus, body: rawBody.substring(0, 500) })
+    this.logger.log(`[HP-PAY-V2] HP Pay response: httpStatus=${respStatus}, body=${rawBody.substring(0, 500)}`)
+
+    // HTTP 状态码非 2xx，提前抛错
+    if (respStatus && (respStatus < 200 || respStatus >= 300)) {
+      this.logger.error(`[HP-PAY-V2] HP Pay HTTP 非 2xx: status=${respStatus}, body=${rawBody.substring(0, 500)}`)
+      throw new ApiException(`HP Pay HTTP ${respStatus}: ${rawBody.substring(0, 200)}`)
+    }
 
     let data: HpPayResponse<T>
     try {

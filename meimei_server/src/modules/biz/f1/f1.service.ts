@@ -332,7 +332,7 @@ export class F1Service {
           return { payment: savedPayment }
         }
       } catch (hpPayError: any) {
-        // 详细打印 hp-pay 异常的所有可能字段，便于排查问题
+        // [HP-PAY-V2] 详细打印 hp-pay 异常的所有可能字段，便于排查问题
         const errMsg =
           hpPayError?.message
           || hpPayError?.response?.message
@@ -342,13 +342,19 @@ export class F1Service {
           || JSON.stringify(hpPayError, Object.getOwnPropertyNames(hpPayError))
           || '未知错误'
         const errStack = hpPayError?.stack || '无堆栈'
-        this.logger.error(`hp-pay 调用异常: ${errMsg}`)
-        this.logger.error(`hp-pay 异常堆栈: ${errStack}`)
+        // 用 console 直接输出，避免被 Logger 截断
+        console.error('[HP-PAY-V2] hp-pay catch errMsg:', errMsg)
+        console.error('[HP-PAY-V2] hp-pay catch errName:', hpPayError?.name)
+        console.error('[HP-PAY-V2] hp-pay catch errCode:', hpPayError?.code)
+        console.error('[HP-PAY-V2] hp-pay catch errStack:', errStack)
+        console.error('[HP-PAY-V2] hp-pay catch raw:', hpPayError)
         if (hpPayError?.getResponse) {
           try {
-            this.logger.error(`hp-pay 异常 response: ${JSON.stringify(hpPayError.getResponse())}`)
+            console.error('[HP-PAY-V2] hp-pay catch httpExceptionResponse:', hpPayError.getResponse())
           } catch (e) { /* ignore */ }
         }
+        this.logger.error(`[HP-PAY-V2] hp-pay 调用异常: ${errMsg}`)
+        this.logger.error(`[HP-PAY-V2] hp-pay 异常堆栈: ${errStack}`)
         // hp-pay 调用失败不影响原有流程，继续返回已保存的支付记录
         return { payment: savedPayment }
       }
