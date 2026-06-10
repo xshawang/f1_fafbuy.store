@@ -1,0 +1,65 @@
+import { Body, Controller, Post, Res } from '@nestjs/common'
+import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Response } from 'express'
+import { Keep } from 'src/common/decorators/keep.decorator'
+import { Public } from 'src/common/decorators/public.decorator'
+import {
+  HpPayCreatePayDto,
+  HpPayCreatePayoutDto,
+  HpPayNotifyDto,
+  HpPayOrderQueryDto,
+  HpPayRequestDto,
+} from './dto/hp-pay.dto'
+import { HpPayService } from './hp-pay.service'
+
+@ApiTags('HP Pay')
+@Public()
+@Controller('hp-pay')
+export class HpPayController {
+  constructor(private readonly hpPayService: HpPayService) {}
+
+  @ApiOperation({ summary: '收款下单 /pay' })
+  @Post('pay')
+  pay(@Body() dto: HpPayCreatePayDto) {
+    return this.hpPayService.pay(dto)
+  }
+
+  @ApiOperation({ summary: '代付下单 /applyfor' })
+  @Post('applyfor')
+  applyfor(@Body() dto: HpPayCreatePayoutDto) {
+    return this.hpPayService.applyfor(dto)
+  }
+
+  @ApiOperation({ summary: '订单查询 /orderquery' })
+  @Post('orderquery')
+  orderquery(@Body() dto: HpPayOrderQueryDto) {
+    return this.hpPayService.orderquery(dto)
+  }
+
+  @ApiOperation({ summary: '余额查询 /getpoints' })
+  @Post('getpoints')
+  getpoints(@Body() dto: HpPayRequestDto) {
+    return this.hpPayService.getpoints(dto)
+  }
+
+  @ApiOperation({ summary: '异步通知验签' })
+  @Post('notify')
+  @Keep()
+  async notify(@Body() dto: HpPayNotifyDto, @Res() res: Response) {
+    const notifyDto: HpPayNotifyDto = {
+      status: dto?.status,
+      sign: dto?.sign,
+      result: typeof dto?.result === 'string' ? dto.result : JSON.stringify(dto?.result ?? ''),
+    }
+
+    const verified = this.hpPayService.verifyNotify(notifyDto)
+    if (!verified.valid) {
+      res.status(400).setHeader('Content-Type', 'text/plain; charset=utf-8')
+      res.send('fail')
+      return
+    }
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.send('success')
+  }
+}

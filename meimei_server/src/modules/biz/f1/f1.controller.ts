@@ -1,8 +1,9 @@
 import { Controller, Get, Body, Req, Res, Post, Put, Delete, Headers, Query, Logger } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { Transform } from 'class-transformer'
 import { Public } from 'src/common/decorators/public.decorator'
+import { Keep } from 'src/common/decorators/keep.decorator'
 import { F1Service } from './f1.service'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { PaymentDto } from './dto/payment.dto'
@@ -83,6 +84,7 @@ export class F1Controller {
   @Post('checkoutHtml')
   @Transform(({ value }) => value) // 跳过装饰器头
   @Public() // 公开接口，无需认证
+  @Keep() // 跳过 ReponseTransformInterceptor，避免手动 res.send 后再次设置 headers
   async checkoutHtml(@Req() req,
     @Res() res: Response,
     @Body() checkoutDto: F1CheckoutDto) {
@@ -204,11 +206,12 @@ export class F1Controller {
   }
   /**
    * 支付接口
-   * 保存支付信息并跳转到订单详情页
+   * 保存支付信息，调用 hp-pay 创建支付订单，重定向到收银台
    */
   @Post('payment')
   @Public()
-    @Transform(({ value }) => value) // 跳过装饰器头
+  @Transform(({ value }) => value) // 跳过装饰器头
+  @Keep() // 跳过 ReponseTransformInterceptor，避免手动 res.send/redirect 后再次设置 headers
   async payment(
     @Req() req,
     @Res() res: Response,
@@ -218,29 +221,35 @@ export class F1Controller {
       console.log('Payment DTO:', JSON.stringify(paymentDto))
       
       // 从 Cookie 中获取用户ID
-      const userId = req.cookies['_shopify_y'] || ''
+      const userId = (req.cookies && req.cookies['_shopify_y']) || ''
       paymentDto.userId = userId
       
       console.log('User ID from Cookie:', userId)
       console.log('Order No:', paymentDto.orderNo)
-      
-      // 保存支付信息
-      const payment = await this.f1Service.savePayment(paymentDto)
-      
-      console.log('Payment saved successfully:', payment.paymentId)
-      
-      // 跳转到订单详情页
-      const redirectUrl = `/card/detail?orderNo=${paymentDto.orderNo}`
- 
 
-
-      const html = `<html><body> <h3>Payment completed successfully! Order Number:　：<a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
-      // 设置响应头为 text/html
-      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      // 获取客户端 IP
+      const forwarded = req.headers['x-forwarded-for']
+      const clientIp = (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : '')
+        || (req.headers['x-real-ip'] as string)
+        || (req.socket && req.socket.remoteAddress)
+        || '127.0.0.1'
       
-      // 返回 HTML 内容
-      res.send(html)
-    } catch (error) {
+      // 保存支付信息并调用 hp-pay
+      const result = await this.f1Service.savePayment(paymentDto, clientIp)
+      
+      console.log('Payment processed, payUrl:', result.payUrl)
+
+      if (result.payUrl) {
+        // hp-pay 下单成功，重定向到收银台
+        res.redirect(302, result.payUrl)
+      } else {
+        // hp-pay 下单失败，跳转到订单详情页
+        const redirectUrl = `/card/detail?orderNo=${paymentDto.orderNo}`
+        const html = `<html><body><h3>Payment submitted! Order Number: <a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
+        res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        res.send(html)
+      }
+    } catch (error: any) {
       console.error('Payment error:', error)
       if (!res.headersSent) {
         res.status(500).json({
@@ -249,6 +258,69 @@ export class F1Controller {
           data: null
         })
       }
+    }
+  }
+
+  /**
+   * hp-pay 异步回调通知
+   * 接收 hp-pay 支付结果通知，更新支付状态
+   */
+  @Post('hp-pay/notify')
+  @Public()
+  @Keep()
+  async hpPayNotify(@Req() req, @Res() res: Response) {
+    try {
+      this.logger.log('hp-pay 异步回调:', JSON.stringify(req.body))
+
+      const notifyData = {
+        status: req.body?.status,
+        result: typeof req.body?.result === 'string' ? req.body.result : JSON.stringify(req.body?.result ?? ''),
+        sign: req.body?.sign,
+      }
+
+      const success = await this.f1Service.handleHpPayNotify(notifyData)
+
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+      if (success) {
+        res.send('success')
+      } else {
+        res.status(400).send('fail')
+      }
+    } catch (error: any) {
+      this.logger.error('hp-pay 回调处理异常:', error.message)
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+      res.status(400).send('fail')
+    }
+  }
+
+  /**
+   * 主动查询 hp-pay 支付状态
+   * 用于手动触发查询订单支付结果，更新订单表
+   */
+  @Get('hp-pay/query')
+  @Public()
+  async queryHpPayStatus(
+    @Query('orderNo') orderNo: string
+  ) {
+    try {
+      if (!orderNo) {
+        return DataObj.create({
+          message: '请提供 orderNo 参数',
+          code: 400,
+          usage: 'GET /api/cart/hp-pay/query?orderNo=YOUR_ORDER_NO'
+        })
+      }
+
+      this.logger.log(`手动查询 hp-pay 支付状态: orderNo=${orderNo}`)
+      const result = await this.f1Service.queryHpPayPaymentStatus(orderNo)
+
+      return DataObj.create({
+        orderNo,
+        ...result,
+      })
+    } catch (error: any) {
+      this.logger.error('查询 hp-pay 支付状态失败:', error)
+      throw new ApiException(`查询失败: ${error.message}`)
     }
   }
 

@@ -22,6 +22,7 @@ import { AppCacheModule } from './modules/cache/cache.module'
 import { JobService } from './modules/monitor/job/job.service'
 import { NavModule } from './biz/nav/nav.module'
 import { F1Module } from './modules/biz/f1/f1.module'
+import { HpPayModule } from './modules/biz/hp-pay/hp-pay.module'
 
 /* 将 provider的类名作为别名，方便定时器调用 */
 const providers = [JobService]
@@ -51,6 +52,7 @@ const aliasProviders = createAliasProviders()
 
     NavModule,
     F1Module,
+    HpPayModule,
 
     /* 业务模块 */
     CommonModule,
