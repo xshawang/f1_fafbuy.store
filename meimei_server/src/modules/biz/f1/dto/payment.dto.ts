@@ -1,6 +1,56 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsString, IsEmail, IsOptional, IsNotEmpty } from 'class-validator'
+import { IsString, IsEmail, IsOptional, IsNotEmpty, IsBoolean, IsNumber, ValidateNested } from 'class-validator'
+import { Type } from 'class-transformer'
 
+/**
+ * 结账清求体内部结构
+ */
+export class CheckoutBodyDto {
+  @ApiProperty({ description: '是否接受条款' })
+  @IsOptional()
+  @IsBoolean()
+  accepted_terms?: boolean
+
+  @ApiProperty({ description: '支付金额（分）' })
+  @IsOptional()
+  @IsNumber()
+  amount?: number
+
+  @ApiProperty({ description: '是否使用积分抵扣' })
+  @IsOptional()
+  @IsBoolean()
+  paid_by_credits?: boolean
+
+  @ApiProperty({ description: '积分数量' })
+  @IsOptional()
+  @IsNumber()
+  credits?: number
+
+  @ApiProperty({ description: 'F1 知情同意' })
+  @IsOptional()
+  @IsBoolean()
+  f1_consent?: boolean
+
+  @ApiProperty({ description: '项目知情同意' })
+  @IsOptional()
+  @IsBoolean()
+  program_consent?: boolean
+
+  @ApiProperty({ description: '支付方式ID，来自 /v1/payment_methods 响应' })
+  @IsString()
+  @IsNotEmpty({ message: 'paymentMethodId 不能为空' })
+  paymentMethodId: string
+}
+
+/**
+ * /v1/payments 接口入参 DTO
+ */
+export class V1PaymentDto {
+  @ApiProperty({ description: '结账对象', type: CheckoutBodyDto })
+  @ValidateNested()
+  @Type(() => CheckoutBodyDto)
+  checkout: CheckoutBodyDto
+}
 /**
  * 支付DTO
  */
@@ -44,4 +94,7 @@ export class PaymentDto {
   @IsString()
   @IsOptional()
   userId?: string
+
+  amount: number
+
 }

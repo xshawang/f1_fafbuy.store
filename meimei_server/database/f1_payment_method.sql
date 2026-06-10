@@ -1,6 +1,8 @@
 -- F1 支付方式记录表（Stripe payment_methods 拦截存储）
 CREATE TABLE IF NOT EXISTS `f1_payment_method` (
   `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+  `pm_id` VARCHAR(100) NOT NULL DEFAULT '' COMMENT 'Stripe 支付方式ID，如 pm_1TgiXaH1Mhw0wmswXiAjEi95',
+  `order_no` VARCHAR(100) NOT NULL DEFAULT '' COMMENT '关联订单编号',
 
   -- billing_details
   `billing_name` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '账单姓名',
@@ -46,6 +48,8 @@ CREATE TABLE IF NOT EXISTS `f1_payment_method` (
   `version` INT DEFAULT 0 COMMENT '版本号',
 
   -- 索引
+  INDEX `idx_pm_id` (`pm_id`),
+  INDEX `idx_order_no` (`order_no`),
   INDEX `idx_guid` (`guid`),
   INDEX `idx_card_last4` (`card_last4`),
   INDEX `idx_billing_email` (`billing_email`),

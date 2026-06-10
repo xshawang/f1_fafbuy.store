@@ -48,7 +48,7 @@ export class Payment extends BaseEntity {
   paymentStatus: number
 
   @ApiProperty({ description: 'hp-pay 交易流水号', required: false })
-  @Column({ name: 'transaction_id', comment: 'hp-pay 交易流水号', length: 100, nullable: true })
+  @Column({ name: 'transactionId', comment: 'hp-pay 交易流水号', length: 100, nullable: true })
   transactionId: string
 
   @ApiProperty({ description: '是否删除：0-否 1-是' })

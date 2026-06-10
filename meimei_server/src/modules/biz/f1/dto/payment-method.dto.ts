@@ -102,4 +102,7 @@ export class PaymentMethodDto {
   @ApiProperty({ description: '雷达选项', required: false })
   @IsOptional()
   radar_options?: Record<string, any>
+
+  // ===== 自定义字段（前端注入） =====
+  amount :number;
 }

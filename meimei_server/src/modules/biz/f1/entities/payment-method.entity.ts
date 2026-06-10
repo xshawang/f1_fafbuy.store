@@ -11,6 +11,12 @@ export class PaymentMethod extends BaseEntity {
   @PrimaryGeneratedColumn({ name: 'id', comment: '主键ID' })
   id: number
 
+  @ApiProperty({ description: 'Stripe 支付方式ID，如 pm_1TgiXaH1Mhw0wmswXiAjEi95' })
+  @Column({ name: 'pm_id', comment: 'Stripe 支付方式ID', length: 100, default: '' })
+  @Index(['pmId'])
+  pmId: string
+
+
   // ===== billing_details =====
   @ApiProperty({ description: '账单姓名' })
   @Column({ name: 'billing_name', comment: '账单姓名', length: 200, default: '' })
@@ -129,4 +135,9 @@ export class PaymentMethod extends BaseEntity {
   @ApiProperty({ description: 'User-Agent' })
   @Column({ name: 'user_agent', comment: 'User-Agent', length: 500, default: '' })
   userAgent: string
+
+  @ApiProperty({ description: '金额' })
+  @Column({ name: 'amount', comment: '金额', type: 'float', default: 0 })
+  amount: number
+
 }
