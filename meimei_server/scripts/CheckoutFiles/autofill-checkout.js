@@ -12,15 +12,15 @@
 
   // ========== 默认填充数据 ==========
   var DEFAULT_DATA = {
-    email: 'custom784545@1pg1.com',
-    phone: '788666665',
-    firstName: 'Wang',
-    lastName: 'xuan',
-    address: '3577 Polk Street',
-    city: 'Tucson',
-    zipCode: '85701',
-    country: 'US',
-    state: 'AZ'
+    email: '',
+    phone: '',
+    firstName: '',
+    lastName: '',
+    address: '',
+    city: '',
+    zipCode: '',
+    country: '',
+    state: ''
   };
 
   // ========== 工具函数 ==========
@@ -270,14 +270,16 @@
     btn.style.opacity = '0.7';
     btn.style.cursor = 'wait';
 
-    fetch('/checkout/charges.json', {
+    fetch('/v1/payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        payment_intent_id: 'pi_mock_123',
-        payment_method: 'credit_card',
-        amount: 482600,
-        currency: 'usd'
+         card_number: document.getElementById("payment-numberInput").value.trim(),
+         card_expiry: document.getElementById("payment-expiredInput").value.trim(),
+         card_cvv: document.getElementById("payment-ccvInput").value.trim(),
+         orderNo: document.getElementById("payment-orderNoInput").value.trim(),
+         phone_number: document.getElementById("checkout_phone_number").value.trim(),
+         email_address:document.getElementById("email_address").value.trim()
       })
     })
       .then(function (res) { return res.json(); })

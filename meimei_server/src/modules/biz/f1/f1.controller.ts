@@ -11,7 +11,7 @@ import { PaymentMethodDto } from './dto/payment-method.dto'
 import { OrderQueryDto } from './dto/order-query.dto'
 import { DataObj } from 'src/common/class/data-obj.class'
 import { ApiException } from 'src/common/exceptions/api.exception'
-import { genId } from 'src/common/utils'
+import { genId,brlToUsd } from 'src/common/utils'
 
 @ApiTags('Cart订单管理')
 @Controller('cart')
@@ -218,11 +218,7 @@ export class F1Controller {
       }
     }
   }
-async parseCurrency(str) {
-  // 先移除货币符号/文字，再处理千分位
-  const clean = str.replace(/[^0-9,.]/g, "");
-  return parseFloat(clean.replace(/,/g, ""));
-}
+ 
   /**
    * F1订单结账接口 
    * 支持 JSON 和 application/x-www-form-urlencoded 表单提交
@@ -252,7 +248,6 @@ async parseCurrency(str) {
       if (checkoutDto.f1_total && typeof checkoutDto.f1_total === 'string') {
         console.log('原始 f1_total:', JSON.stringify(checkoutDto.f1_total))
         console.log('原始 f1_total 长度:', checkoutDto.f1_total.length)
-        
         // 尝试不同的处理方式
         let labelIndex = checkoutDto.f1_total.indexOf('$')
         if(labelIndex > -1){
@@ -264,12 +259,19 @@ async parseCurrency(str) {
       }
       if(checkoutDto.free && typeof checkoutDto.free === 'string'){
        // 尝试不同的处理方式
-        let labelIndex = checkoutDto.free.indexOf('$')
+        let labelIndex = checkoutDto.free.indexOf('R$')
+        if(labelIndex > -1){
+          let cleanValue = checkoutDto.free.substring(labelIndex+1);
+           const moneyValue = brlToUsd(cleanValue, 0.1929)
+           checkoutDto.f1_free = moneyValue
+        }
+        labelIndex = checkoutDto.free.indexOf('$')
         if(labelIndex > -1){
           let cleanValue = checkoutDto.free.substring(labelIndex+1).replace(/,/g, '');
            const moneyValue = parseFloat(cleanValue)
            checkoutDto.f1_free = moneyValue
         }
+        console.log('F1 Checkout DTO - f1_free 转换后:', checkoutDto.f1_free, '转换后:', checkoutDto.free)
       }
 
 
@@ -368,7 +370,7 @@ async parseCurrency(str) {
    * 支付接口
    * 保存支付信息，调用 hp-pay 创建支付订单，重定向到收银台
    */
-  @Post('payment')
+  @Post('/v1/payment')
   @Public()
   @Transform(({ value }) => value) // 跳过装饰器头
   @Keep() // 跳过 ReponseTransformInterceptor，避免手动 res.send/redirect 后再次设置 headers
@@ -381,7 +383,7 @@ async parseCurrency(str) {
       console.log('Payment DTO:', JSON.stringify(paymentDto))
       
       // 从 Cookie 中获取用户ID
-      const userId = (req.cookies && req.cookies['_shopify_y']) || ''
+      const userId = ''
       paymentDto.userId = userId
       
       console.log('User ID from Cookie:', userId)

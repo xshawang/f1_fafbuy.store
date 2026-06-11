@@ -19,7 +19,30 @@ const EXCHANGE_RATES: Record<string, number> = {
   BRL: 1.0, // 基准
 };
 
+/**
+ * 巴西雷亚尔(R$) 字符串 转 美元金额
+ * @param {string} brlStr - 巴西雷亚尔文本，例：R$5.309,15
+ * @param {number} exchangeRate - 汇率：1 BRL = 多少 USD
+ * @returns {number} 换算后的美元数值
+ */
+export function brlToUsd(brlStr, exchangeRate) {
+  if (!brlStr || typeof exchangeRate !== 'number' || exchangeRate <= 0) {
+    return 0;
+  }
 
+  // 1. 去掉货币符号 R$
+  let numStr = brlStr.replace(/R\$/, '');
+  // 2. 巴西格式：千位. 小数,  → 转为标准数字格式
+  numStr = numStr.replace(/\./g, '').replace(/,/, '.');
+  
+  // 转为数字
+  const brlNum = parseFloat(numStr);
+  if (isNaN(brlNum)) return 0;
+
+  // 3. 汇率换算 BRL → USD
+  const usdNum = brlNum * exchangeRate;
+  return usdNum;
+}
 /**
  * 通用换算函数
  * @param amount 金额

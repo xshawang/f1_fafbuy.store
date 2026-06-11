@@ -174,8 +174,8 @@ export class F1Service {
     //替换数量
     htmlContent = htmlContent.replace(/class="item-amount">2<\/p>/, `class="item-amount">${f1Order.f1Quarty}</p>`)
 
-    htmlContent = htmlContent.replaceAll("$20,485.48", '$' + f1Order.f1Money)
-     htmlContent = htmlContent.replaceAll("$604.34", '$0')
+    htmlContent = htmlContent.replaceAll("¥20,485.48", '$' + (f1Order.f1Money - f1Order.f1Free))
+    htmlContent = htmlContent.replaceAll("¥604.34", '$' + (f1Order.f1Free))
     htmlContent = htmlContent.replaceAll("$3,113.21", '$' + f1Order.f1Money)
 
     htmlContent = htmlContent.replaceAll("_orderNo_", f1Order.orderNo)
