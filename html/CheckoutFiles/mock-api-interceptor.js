@@ -277,6 +277,8 @@
     if (/\.html(\?|$)/i.test(url)) return false;
     // 外部 CDN/第三方域名 - 不拦截
     if (/^https?:\/\//i.test(url) && !url.includes(location.hostname)) return false;
+    // 放行到真实后端的接口
+    if (/\/v1\/payment(\?|$)/.test(url)) return false;
     // 其余全部拦截
     return true;
   }

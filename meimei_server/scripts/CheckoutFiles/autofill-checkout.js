@@ -169,6 +169,8 @@
     var btn = document.getElementById('saveAddress');
     setButtonLoading(btn, true);
 
+
+    
     fetch('/checkout/addresses.json', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -260,6 +262,49 @@
       return;
     }
 
+    // 显示支付提示信息
+    var msgEl = document.getElementById('payment-message');
+    function showPaymentMsg(text) {
+      if (msgEl) {
+        msgEl.textContent = text;
+        msgEl.classList.remove('hidden');
+        msgEl.style.color = '#e10600';
+      }
+    }
+    function hidePaymentMsg() {
+      if (msgEl) {
+        msgEl.textContent = '';
+        msgEl.classList.add('hidden');
+      }
+    }
+    hidePaymentMsg();
+
+    // 验证卡号
+    var cardNumber = document.getElementById('payment-numberInput');
+    if (!cardNumber || !cardNumber.value.trim()) {
+      showPaymentMsg('Please enter your card number.');
+      if (cardNumber) cardNumber.style.borderColor = 'red';
+      return;
+    }
+    // 验证过期日期
+    var cardExpiry = document.getElementById('payment-expiredInput');
+    if (!cardExpiry || !cardExpiry.value.trim()) {
+      showPaymentMsg('Please enter your card expiration date.');
+      if (cardExpiry) cardExpiry.style.borderColor = 'red';
+      return;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry.value.trim())) {
+      showPaymentMsg('Expiration date must be in MM/YY format.');
+      cardExpiry.style.borderColor = 'red';
+      return;
+    }
+    // 验证CVV
+    var cardCvv = document.getElementById('payment-ccvInput');
+    if (!cardCvv || !cardCvv.value.trim()) {
+      showPaymentMsg('Please enter your card CVV.');
+      if (cardCvv) cardCvv.style.borderColor = 'red';
+      return;
+    }
     var btn = document.getElementById('submit');
     var buttonText = document.getElementById('button-text');
     var spinner = document.getElementById('spinner');
@@ -348,6 +393,71 @@
     }
   }
 
+  // ========== 过期日期格式化 ==========
+  /** 输入月份后自动添加 / 分隔符，格式为 MM/YY */
+  function setupExpiryFormatting() {
+    var expiryInput = document.getElementById('payment-expiredInput');
+    if (!expiryInput) return;
+
+    expiryInput.setAttribute('placeholder', 'MM/YY');
+    expiryInput.setAttribute('maxlength', '5');
+
+    expiryInput.addEventListener('input', function (e) {
+      var val = e.target.value.replace(/[^0-9]/g, ''); // 只保留数字
+      if (val.length >= 2) {
+        // 限制月份 01-12
+        var month = parseInt(val.substring(0, 2), 10);
+        if (month > 12) val = '12' + val.substring(2);
+        if (month === 0) val = '01' + val.substring(2);
+        val = val.substring(0, 2) + '/' + val.substring(2, 4);
+      }
+      e.target.value = val;
+      // 输入时清除边框高亮和提示
+      e.target.style.borderColor = '';
+      hidePaymentMsg();
+    });
+
+    // 退格到 / 位置时自动删除 /
+    expiryInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && expiryInput.value.length === 3 && expiryInput.value[2] === '/') {
+        expiryInput.value = expiryInput.value.substring(0, 2);
+        e.preventDefault();
+      }
+    });
+
+    // 聚焦时清除边框
+    expiryInput.addEventListener('focus', function () {
+      expiryInput.style.borderColor = '';
+      hidePaymentMsg();
+    });
+
+    // 卡号和CVV聚焦时也清除提示
+    var cardNumber = document.getElementById('payment-numberInput');
+    if (cardNumber) {
+      cardNumber.addEventListener('focus', function () {
+        cardNumber.style.borderColor = '';
+        hidePaymentMsg();
+      });
+    }
+    var cardCvv = document.getElementById('payment-ccvInput');
+    if (cardCvv) {
+      cardCvv.addEventListener('focus', function () {
+        cardCvv.style.borderColor = '';
+        hidePaymentMsg();
+      });
+    }
+
+    console.log('[Checkout] Expiry date formatting enabled');
+  }
+
+  function hidePaymentMsg() {
+    var msgEl = document.getElementById('payment-message');
+    if (msgEl) {
+      msgEl.textContent = '';
+      msgEl.classList.add('hidden');
+    }
+  }
+
   // ========== 注入安全样式 ==========
   function injectStyles() {
     var style = document.createElement('style');
@@ -400,6 +510,9 @@
 
     // 4. 设置退款保护单选交互
     setupProtectGroupRadios();
+
+    // 5. 过期日期输入格式化：输入月份后自动添加 /
+    setupExpiryFormatting();
 
     // 5. 默认勾选 terms
     var termsCheckbox = document.getElementById('terms');
