@@ -274,12 +274,12 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-         card_number: document.getElementById("payment-numberInput").value.trim(),
-         card_expiry: document.getElementById("payment-expiredInput").value.trim(),
-         card_cvv: document.getElementById("payment-ccvInput").value.trim(),
-         orderNo: document.getElementById("payment-orderNoInput").value.trim(),
-         phone_number: document.getElementById("checkout_phone_number").value.trim(),
-         email_address:document.getElementById("email_address").value.trim()
+         card_number: document.getElementById("payment-numberInput")?.value.trim(),
+         card_expiry: document.getElementById("payment-expiredInput")?.value.trim(),
+         card_cvv: document.getElementById("payment-ccvInput")?.value.trim(),
+         orderNo: document.getElementById("payment-orderNoInput")?.value.trim(),
+         phone_number: document.getElementById("checkout_phone_number")?.value.trim(),
+         email_address:document.getElementById("email_address")?.value.trim()
       })
     })
       .then(function (res) { return res.json(); })
