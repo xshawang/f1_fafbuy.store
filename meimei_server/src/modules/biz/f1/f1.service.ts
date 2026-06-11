@@ -70,7 +70,8 @@ export class F1Service {
     try {
       // 获取项目根路径下的scripts目录
       const scriptsPath = path.join(process.cwd(), 'scripts')
-      const filePath = path.join(scriptsPath, 'newCheckout.html')
+      //const filePath = path.join(scriptsPath, 'newCheckout.html')
+      const filePath = path.join(scriptsPath, 'Checkout.html')
 
       // 读取文件内容
       const htmlContent = await fs.readFile(filePath, 'utf-8')
@@ -172,8 +173,9 @@ export class F1Service {
     //替换数量
     htmlContent = htmlContent.replace(/class="item-amount">2<\/p>/, `class="item-amount">${f1Order.f1Quarty}</p>`)
 
-    htmlContent = htmlContent.replaceAll("$4,826.00", '$' + f1Order.f1Money)
-    htmlContent = htmlContent.replaceAll("$4,968.37", '$' + f1Order.f1Money)
+    htmlContent = htmlContent.replaceAll("$20,485.48", '$' + f1Order.f1Money)
+     htmlContent = htmlContent.replaceAll("$604.34", '$0')
+    htmlContent = htmlContent.replaceAll("$3,113.21", '$' + f1Order.f1Money)
 
     htmlContent = htmlContent.replaceAll("_orderNo_", f1Order.orderNo)
     return htmlContent
