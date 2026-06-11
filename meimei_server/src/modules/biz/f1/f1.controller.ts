@@ -263,7 +263,7 @@ export class F1Controller {
         if(labelIndex > -1){
           let cleanValue = checkoutDto.free.substring(labelIndex+1);
            const moneyValue = brlToUsd(cleanValue, 0.1929)
-           checkoutDto.f1_free = moneyValue
+           checkoutDto.f1_free = moneyValue/100
         }
         labelIndex = checkoutDto.free.indexOf('$')
         if(labelIndex > -1){
