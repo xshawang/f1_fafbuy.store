@@ -23,6 +23,15 @@ export class F1CheckoutDto {
   @IsOptional()
   f1_total: string
 
+ @ApiProperty({ description: 'sub_total（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
+  @IsOptional()
+  sub_total: string
+
+ @ApiProperty({ description: 'free（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
+  @IsOptional()
+  free: string
+
+
   @ApiProperty({ description: 'F1金额（数字格式，单位：分）' })
   @IsOptional()
   f1_money?: number

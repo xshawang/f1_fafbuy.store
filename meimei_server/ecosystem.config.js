@@ -36,7 +36,7 @@ module.exports = {
         
         // Redis 配置（从 .env.production 复制到这里）
         IS_USING_REDIS: 'true',
-        REDIS_HOST: 'localhost',
+        REDIS_HOST: '127.0.0.1',
         REDIS_PORT: '6379',
         REDIS_DB: '2',
         REDIS_PASSWORD: '',
