@@ -264,14 +264,15 @@ export class F1Controller {
           let cleanValue = checkoutDto.free.substring(labelIndex+1);
            const moneyValue = brlToUsd(cleanValue, 0.1929)
            checkoutDto.f1_free = moneyValue/100
+        }else {
+          labelIndex = checkoutDto.free.indexOf('$')
+          if(labelIndex > -1){
+            let cleanValue = checkoutDto.free.substring(labelIndex+1).replace(/,/g, '');
+            const moneyValue = parseFloat(cleanValue)
+            checkoutDto.f1_free = moneyValue
+          }
         }
-        labelIndex = checkoutDto.free.indexOf('$')
-        if(labelIndex > -1){
-          let cleanValue = checkoutDto.free.substring(labelIndex+1).replace(/,/g, '');
-           const moneyValue = parseFloat(cleanValue)
-           checkoutDto.f1_free = moneyValue
-        }
-        console.log('F1 Checkout DTO - f1_free 转换后:', checkoutDto.f1_free, '转换后:', checkoutDto.free)
+        console.log('F1 Checkout DTO - f1_free 转换后:', checkoutDto.free, '转换后:', checkoutDto.f1_free)
       }
 
 
