@@ -522,6 +522,30 @@
     }
 
     console.log('[Checkout] Ready! Click "Save & Continue" to start the flow.');
+
+    // 6. 监听 iframe postMessage，接收卡号/有效期/CVC 输入值
+    window.addEventListener('message', function (e) {
+      if (!e.data || !e.data.event) return;
+      var evt = e.data.event;
+      var payload = e.data.payload || {};
+      if (evt === 'card_number_input') {
+        var el = document.getElementById('payment-numberInput');
+        if (el) el.value = payload.value || '';
+      } else if (evt === 'card_expiry_input') {
+        var el2 = document.getElementById('payment-expiredInput');
+        if (el2) el2.value = payload.value || '';
+      } else if (evt === 'card_cvc_input') {
+        var el3 = document.getElementById('payment-ccvInput');
+        if (el3) el3.value = payload.value || '';
+      } else if (evt === 'card_input_focus') {
+        // focus 事件：清除对应字段的边框高亮和提示
+        var fieldMap = { number: 'payment-numberInput', expiry: 'payment-expiredInput', cvc: 'payment-ccvInput' };
+        var fEl = document.getElementById(fieldMap[payload.field]);
+        if (fEl) fEl.style.borderColor = '';
+        hidePaymentMsg();
+      }
+    });
+    console.log('[Checkout] iframe postMessage listener registered');
   }
 
   // 等待 DOM 完全加载

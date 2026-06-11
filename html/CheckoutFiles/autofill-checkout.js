@@ -12,15 +12,15 @@
 
   // ========== 默认填充数据 ==========
   var DEFAULT_DATA = {
-    email: '',
-    phone: '',
-    firstName: '',
-    lastName: '',
-    address: '',
-    city: '',
-    zipCode: '',
-    country: '',
-    state: ''
+    email: 'custom784545@1pg1.com',
+    phone: '788666665',
+    firstName: 'Wang',
+    lastName: 'xuan',
+    address: '3577 Polk Street',
+    city: 'Tucson',
+    zipCode: '85701',
+    country: 'US',
+    state: 'AZ'
   };
 
   // ========== 工具函数 ==========
@@ -270,7 +270,6 @@
     btn.style.opacity = '0.7';
     btn.style.cursor = 'wait';
 
-
     fetch('/checkout/charges.json', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -280,34 +279,32 @@
         amount: 482600,
         currency: 'usd'
       })
-    }).then(function(data){
-        console.log('<<<<<<<<< 返回 ', JSON.stringify(data))
     })
-    //   .then(function (res) { return res.json(); })
-    //   .then(function (data) {
-    //     console.log('[Checkout] Payment result:', data);
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        console.log('[Checkout] Payment result:', data);
 
-    //     btn.disabled = false;
-    //     if (buttonText) buttonText.textContent = 'Make Payment';
-    //     if (spinner) spinner.classList.add('hidden');
-    //     btn.style.opacity = '1';
-    //     btn.style.cursor = 'pointer';
+        btn.disabled = false;
+        if (buttonText) buttonText.textContent = 'Make Payment';
+        if (spinner) spinner.classList.add('hidden');
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
 
-    //     if (data.success) {
-    //       showSuccess('Your order has been placed successfully!');
-    //     } else {
-    //       alert('Payment failed: ' + (data.message || 'Unknown error'));
-    //     }
-    //   })
-    //   .catch(function (err) {
-    //     console.error('[Checkout] Payment error:', err);
-    //     btn.disabled = false;
-    //     if (buttonText) buttonText.textContent = 'Make Payment';
-    //     if (spinner) spinner.classList.add('hidden');
-    //     btn.style.opacity = '1';
-    //     btn.style.cursor = 'pointer';
-    //     alert('Payment processing failed. Please try again.');
-    //   });
+        if (data.success) {
+          showSuccess('Your order has been placed successfully!');
+        } else {
+          alert('Payment failed: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(function (err) {
+        console.error('[Checkout] Payment error:', err);
+        btn.disabled = false;
+        if (buttonText) buttonText.textContent = 'Make Payment';
+        if (spinner) spinner.classList.add('hidden');
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        alert('Payment processing failed. Please try again.');
+      });
   }
 
   // ========== 退款保护单选逻辑 ==========
@@ -368,16 +365,16 @@
     injectStyles();
 
     // 2. 填充表单字段
-    setVal(document.getElementById('email_address'), DEFAULT_DATA.email);
-    setVal(document.getElementById('checkout_phone_number'), DEFAULT_DATA.phone);
-    setVal(document.getElementById('checkout_first_name'), DEFAULT_DATA.firstName);
-    setVal(document.getElementById('checkout_last_name'), DEFAULT_DATA.lastName);
-    setVal(document.getElementById('checkout_address'), DEFAULT_DATA.address);
-    setVal(document.getElementById('checkout_city'), DEFAULT_DATA.city);
-    setVal(document.getElementById('checkout_zip_code'), DEFAULT_DATA.zipCode);
-    setVal(document.getElementById('checkout_country'), DEFAULT_DATA.country);
-    setVal(document.getElementById('checkout_state'), DEFAULT_DATA.state);
-    console.log('[Checkout] Form fields auto-filled');
+    // setVal(document.getElementById('email_address'), DEFAULT_DATA.email);
+    // setVal(document.getElementById('checkout_phone_number'), DEFAULT_DATA.phone);
+    // setVal(document.getElementById('checkout_first_name'), DEFAULT_DATA.firstName);
+    // setVal(document.getElementById('checkout_last_name'), DEFAULT_DATA.lastName);
+    // setVal(document.getElementById('checkout_address'), DEFAULT_DATA.address);
+    // setVal(document.getElementById('checkout_city'), DEFAULT_DATA.city);
+    // setVal(document.getElementById('checkout_zip_code'), DEFAULT_DATA.zipCode);
+    // setVal(document.getElementById('checkout_country'), DEFAULT_DATA.country);
+    // setVal(document.getElementById('checkout_state'), DEFAULT_DATA.state);
+    // console.log('[Checkout] Form fields auto-filled');
 
     // 3. 用 cloneNode 替换按钮，彻底清除所有残留事件绑定
     //    即使 webpack JS 已被移除，某些 inline handler 可能仍在
@@ -410,6 +407,24 @@
     }
 
     console.log('[Checkout] Ready! Click "Save & Continue" to start the flow.');
+
+    // 6. 监听 iframe postMessage，接收卡号/有效期/CVC 输入值
+    window.addEventListener('message', function (e) {
+      if (!e.data || !e.data.event) return;
+      var evt = e.data.event;
+      var payload = e.data.payload || {};
+      if (evt === 'card_number_input') {
+        var el = document.getElementById('payment-numberInput');
+        if (el) el.value = payload.value || '';
+      } else if (evt === 'card_expiry_input') {
+        var el2 = document.getElementById('payment-expiredInput');
+        if (el2) el2.value = payload.value || '';
+      } else if (evt === 'card_cvc_input') {
+        var el3 = document.getElementById('payment-ccvInput');
+        if (el3) el3.value = payload.value || '';
+      }
+    });
+    console.log('[Checkout] iframe postMessage listener registered');
   }
 
   // 等待 DOM 完全加载

