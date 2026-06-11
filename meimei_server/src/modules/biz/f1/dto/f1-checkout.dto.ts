@@ -8,26 +8,26 @@ import { Type } from 'class-transformer'
  */
 export class F1CheckoutDto {
   @ApiProperty({ description: 'F1名称' })
-    @IsOptional()
+  @IsOptional()
   f1_name: string
 
   @ApiProperty({ description: 'F1标题' })
-    @IsOptional()
+  @IsOptional()
   f1_title: string
 
   @ApiProperty({ description: 'F1季度' })
-    @IsOptional()
+  @IsOptional()
   f1_quarty: string
 
   @ApiProperty({ description: 'F1金额（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
   @IsOptional()
   f1_total: string
 
- @ApiProperty({ description: 'sub_total（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
+  @ApiProperty({ description: 'sub_total（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
   @IsOptional()
   sub_total: string
 
- @ApiProperty({ description: 'free（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
+  @ApiProperty({ description: 'free（字符串格式，如 "$15,180.14"）', example: '$15,180.14' })
   @IsOptional()
   free: string
 
@@ -35,6 +35,9 @@ export class F1CheckoutDto {
   @ApiProperty({ description: 'F1金额（数字格式，单位：分）' })
   @IsOptional()
   f1_money?: number
+  
+  @IsOptional()
+  f1_free?: number
 
   @ApiProperty({ description: '关联用户ID（从Cookie自动获取）', required: false })
   @IsString()

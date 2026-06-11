@@ -93,6 +93,7 @@ export class F1Service {
       f1Order.f1Title = checkoutDto.f1_title || ''
       f1Order.f1Quarty = checkoutDto.f1_quarty || ''
       f1Order.f1Money = checkoutDto.f1_money
+      f1Order.f1Free = checkoutDto.f1_free
       f1Order.id = checkoutDto.id || ''
       f1Order.orderStatus = 0 // 默认待处理
       f1Order.isDeleted = 0 // 默认未删除

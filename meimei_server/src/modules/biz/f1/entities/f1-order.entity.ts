@@ -27,6 +27,10 @@ export class F1Order extends BaseEntity {
   @Column({ name: 'f1_money', comment: 'F1金额', type: 'decimal', precision: 10, scale: 2, default: 0 })
   f1Money?: number
 
+  @ApiProperty({ description: 'F1手续费' })
+  @Column({ name: 'f1_free', comment: 'F1手续费', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  f1Free?: number
+
   @ApiProperty({ description: '关联ID' })
   @Column({ name: 'id', comment: '关联ID', length: 100 })
   id: string

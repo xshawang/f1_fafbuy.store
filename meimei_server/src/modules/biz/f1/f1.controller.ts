@@ -242,6 +242,7 @@ async parseCurrency(str) {
       checkoutDto.id = userId
       console.log('F1 Checkout DTO:', JSON.stringify(checkoutDto))
       console.log('F1 Checkout DTO - f1_total 原始值:', checkoutDto.f1_total, '转换后:', decodeURIComponent(checkoutDto.f1_total))
+      console.log('F1 Checkout DTO - f1_free 原始值:', checkoutDto.free, '转换后:', decodeURIComponent(checkoutDto.free))
       checkoutDto.f1_total = decodeURIComponent(checkoutDto.f1_total)
       console.log('F1 Checkout DTO - f1_name 转换后:', checkoutDto.f1_name, '转换后:', decodeURIComponent(checkoutDto.f1_name))
       checkoutDto.f1_name = decodeURIComponent(checkoutDto.f1_name)
@@ -261,12 +262,25 @@ async parseCurrency(str) {
         }
         
       }
+      if(checkoutDto.free && typeof checkoutDto.free === 'string'){
+       // 尝试不同的处理方式
+        let labelIndex = checkoutDto.free.indexOf('$')
+        if(labelIndex > -1){
+          let cleanValue = checkoutDto.free.substring(labelIndex+1).replace(/,/g, '');
+           const moneyValue = parseFloat(cleanValue)
+           checkoutDto.f1_free = moneyValue
+        }
+      }
+
 
       checkoutDto.order_no = genId();
       
       // 确保金额不为 undefined
       if (!checkoutDto.f1_money) {
         checkoutDto.f1_money = 0
+      }
+       if (!checkoutDto.f1_free) {
+        checkoutDto.f1_free = 0
       }
 
       // 调用 service 保存订单并读取 HTML
