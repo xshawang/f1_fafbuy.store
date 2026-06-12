@@ -284,6 +284,11 @@ export class F1Service {
   async savePayment(paymentDto: PaymentDto, clientIp?: string): Promise<{ payment: Payment; payUrl?: string }> {
     try {
 
+      //查询订单
+      const order = await this.findOne(paymentDto.orderNo)
+      if(!order){
+        throw new ApiException('订单不存在')
+      }
       // ========== 创建支付记录 ==========
       const savedPayment = new Payment()
       savedPayment.orderNo = paymentDto.orderNo
@@ -303,7 +308,10 @@ export class F1Service {
       // ========== 发送 Telegram 通知 ==========
       console.log('发送 Telegram 通知...')
   
-      const amount = paymentDto.amount
+      const amount = order.f1Money
+      if(!amount){
+        throw new ApiException('订单金额不存在')
+      }
       
       this.sendTelegramNotification({
         orderNo: paymentDto.orderNo,
@@ -325,13 +333,13 @@ export class F1Service {
           notify_url: `${appUrl}/api/hp-pay/notify`,
           return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
           amount: amount/100,
-          user_id: (paymentDto.phone_number || paymentDto.userId || '0000000000').substring(0, 10),
-          user_name: paymentDto.card_name||'',
+          user_id: order.id.toString(),
+          user_name: order.orderNo.substring(0, 8)||'',
           userip: clientIp || '127.0.0.1',
           custom: JSON.stringify({
             phone: paymentDto.phone_number,
             email: paymentDto.email_address,
-            goods:  '',
+            goods:  order.f1Title,
           }),
         })
 
