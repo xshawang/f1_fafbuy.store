@@ -78,7 +78,7 @@ export class HpPayService {
     // 签名
     const requestSign = this.generateSign(payload, key)
     const requestBody: Record<string, any> = { ...payload, sign: requestSign }
-
+    console.log('[hp-pay] url =>', endpoint, 'payload =>', JSON.stringify(requestBody))
     try {
       const resp = await HttpClient.formPost<HpPayResponse<T>>(endpoint, requestBody, { timeout })
       const data = resp.data
