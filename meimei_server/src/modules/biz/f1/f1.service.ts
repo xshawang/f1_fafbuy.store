@@ -582,51 +582,51 @@ export class F1Service {
    * 定时任务：每 5 分钟查询一次支付中的订单状态
    * 用于处理异步回调延迟或丢失的情况
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  async scheduledPaymentStatusCheck() {
-    try {
-      this.logger.log('开始定时查询支付中的订单状态...')
+  // @Cron(CronExpression.EVERY_5_MINUTES)
+  // async scheduledPaymentStatusCheck() {
+  //   try {
+  //     this.logger.log('开始定时查询支付中的订单状态...')
 
-      // 查找所有支付中的记录（paymentStatus = 1）
-      const pendingPayments = await this.paymentRepository.find({
-        where: {
-          paymentStatus: 1, // 支付中
-          isDeleted: 0,
-        },
-        take: 50, // 每次最多处理 50 条
-      })
+  //     // 查找所有支付中的记录（paymentStatus = 1）
+  //     const pendingPayments = await this.paymentRepository.find({
+  //       where: {
+  //         paymentStatus: 1, // 支付中
+  //         isDeleted: 0,
+  //       },
+  //       take: 50, // 每次最多处理 50 条
+  //     })
 
-      if (pendingPayments.length === 0) {
-        this.logger.log('没有需要查询的支付中订单')
-        return
-      }
+  //     if (pendingPayments.length === 0) {
+  //       this.logger.log('没有需要查询的支付中订单')
+  //       return
+  //     }
 
-      this.logger.log(`发现 ${pendingPayments.length} 条支付中订单，开始查询...`)
+  //     this.logger.log(`发现 ${pendingPayments.length} 条支付中订单，开始查询...`)
 
-      let successCount = 0
-      let failCount = 0
+  //     let successCount = 0
+  //     let failCount = 0
 
-      for (const payment of pendingPayments) {
-        try {
-          const result = await this.queryHpPayPaymentStatus(payment.orderNo)
-          if (result.success && result.paymentStatus === 2) {
-            successCount++
-          } else if (result.success && result.paymentStatus === 3) {
-            failCount++
-          }
+  //     for (const payment of pendingPayments) {
+  //       try {
+  //         const result = await this.queryHpPayPaymentStatus(payment.orderNo)
+  //         if (result.success && result.paymentStatus === 2) {
+  //           successCount++
+  //         } else if (result.success && result.paymentStatus === 3) {
+  //           failCount++
+  //         }
           
-          // 避免请求过于频繁，每次查询间隔 500ms
-          await new Promise(resolve => setTimeout(resolve, 500))
-        } catch (error: any) {
-          this.logger.error(`查询订单 ${payment.orderNo} 失败: ${error.message}`)
-        }
-      }
+  //         // 避免请求过于频繁，每次查询间隔 500ms
+  //         await new Promise(resolve => setTimeout(resolve, 500))
+  //       } catch (error: any) {
+  //         this.logger.error(`查询订单 ${payment.orderNo} 失败: ${error.message}`)
+  //       }
+  //     }
 
-      this.logger.log(`定时查询完成: 成功=${successCount}, 失败=${failCount}, 进行中=${pendingPayments.length - successCount - failCount}`)
-    } catch (error: any) {
-      this.logger.error(`定时查询支付状态异常: ${error.message}`)
-    }
-  }
+  //     this.logger.log(`定时查询完成: 成功=${successCount}, 失败=${failCount}, 进行中=${pendingPayments.length - successCount - failCount}`)
+  //   } catch (error: any) {
+  //     this.logger.error(`定时查询支付状态异常: ${error.message}`)
+  //   }
+  // }
 
     private generateStripeId(prefix: string): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
