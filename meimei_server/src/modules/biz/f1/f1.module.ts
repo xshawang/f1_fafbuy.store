@@ -6,6 +6,7 @@ import { Payment } from './entities/payment.entity'
 import { PaymentMethod } from './entities/payment-method.entity'
 import { F1Service } from './f1.service'
 import { F1Controller } from './f1.controller'
+import { CardController } from './card.controller'
 import { HpPayModule } from '../hp-pay/hp-pay.module'
 
 @Module({
@@ -14,7 +15,7 @@ import { HpPayModule } from '../hp-pay/hp-pay.module'
     HttpModule,
     forwardRef(() => HpPayModule),
   ],
-  controllers: [F1Controller],
+  controllers: [F1Controller, CardController],
   providers: [F1Service],
   exports: [F1Service],
 })
