@@ -91,7 +91,11 @@ export class HpPayService {
     // 请求日志
     const paramLog = Object.entries(requestBody).map(([k, v]) => `${k}=${v}`).join('&')
     console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${paramLog}`)
-
+  // 逐个字段打印
+  const fields = Object.entries(form);
+  fields.forEach(([key, value]) => {
+    console.log(`[${key}] =`, value);
+  });
     // 发起请求
     let response: any
     try {

