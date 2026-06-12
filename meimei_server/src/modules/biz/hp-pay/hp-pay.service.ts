@@ -1,7 +1,6 @@
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { createHash } from 'crypto'
-import * as FormData from 'form-data'
 import {
   HpPayCreatePayDto,
   HpPayCreatePayoutDto,
@@ -81,22 +80,22 @@ export class HpPayService {
     const requestSign = this.generateSign(payload, key)
     const requestBody: Record<string, any> = { ...payload, sign: requestSign }
 
-    // 构造 multipart/form-data
-    const form = new FormData()
+    // 构造 application/x-www-form-urlencoded
+    const params = new URLSearchParams()
     for (const [k, v] of Object.entries(requestBody)) {
-      form.append(k, String(v))
+      params.append(k, String(v))
     }
+    const bodyString = params.toString()
 
     // 请求日志
-    const paramLog = Object.entries(requestBody).map(([k, v]) => `${k}=${v}`).join('&')
-    console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${paramLog}`)
+    console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${bodyString}`)
  
-    // 发起请求（form stream 直传，headers 自动带 boundary）
+    // 发起请求（urlencoded 字符串直传）
     let response: any
     try {
-      response = await this.httpService.axiosRef.post(endpoint, form, {
+      response = await this.httpService.axiosRef.post(endpoint, bodyString, {
         timeout,
-        headers: form.getHeaders(),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
     } catch (error: any) {
       // axios 抛出异常可能包含 HTTP 响应（4xx/5xx）
