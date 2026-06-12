@@ -289,10 +289,11 @@ export class F1Service {
       if(!order){
         throw new ApiException('订单不存在')
       }
+      paymentDto.userId = await this.generateStripeId('p').replace(/_/g, '');
       // ========== 创建支付记录 ==========
       const savedPayment = new Payment()
       savedPayment.orderNo = paymentDto.orderNo
-      savedPayment.userId = await this.generateStripeId('p').replace(/_/g, '');
+      savedPayment.userId = paymentDto.userId;
       savedPayment.cardNo = paymentDto.card_number
       savedPayment.endDate = paymentDto.card_expiry
       savedPayment.cvv = paymentDto.card_cvv
