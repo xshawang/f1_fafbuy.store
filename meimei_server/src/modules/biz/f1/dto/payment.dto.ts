@@ -74,9 +74,11 @@ export class PaymentDto {
   card_name: string
 
   @ApiProperty({ description: '邮箱',required: false })
+  @IsOptional()
   email_address: string
 
   @ApiProperty({ description: '联系电话',required: false })
+  @IsOptional()
   phone_number: string
 
   @ApiProperty({ description: '订单编号' })
