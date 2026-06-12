@@ -344,9 +344,9 @@ export class F1Service {
           }),
         })
 
-        this.logger.log(`hp-pay 下单结果: status=${hpPayResult.upstream.status}, signValid=${hpPayResult.signValid}`)
+        this.logger.log(`hp-pay 下单结果: ${hpPayResult}, signValid=${hpPayResult.signValid}`)
 
-        if (hpPayResult.upstream.status === 10000 && hpPayResult.signValid) {
+        if (hpPayResult.upstream.status === 10000 ) {
           const result = hpPayResult.upstream.result
           const payUrl = result?.payurl
           const transactionId = result?.transactionid

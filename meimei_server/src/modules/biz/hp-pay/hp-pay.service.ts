@@ -83,13 +83,12 @@ export class HpPayService {
       const resp = await HttpClient.formPost<HpPayResponse<T>>(endpoint, requestBody, { timeout })
       const data = resp.data
 
+      console.log('[hp-pay] response =>', JSON.stringify(data))
+
       // 验签
       const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
-      const expectedSign = this.generateSign(
-        { status: this.normalizeValue(data.status), result: resultText },
-        key,
-      )
-
+      const expectedSign = this.generateSign(JSON.parse(resultText), key)
+      console.log('[hp-pay] 自己sign =>', expectedSign)
       return { upstream: data, signValid: data.sign === expectedSign, expectedSign }
     } catch (error: any) {
       throw new ApiException(`HP Pay 请求失败: ${error?.message || 'unknown'}`)
