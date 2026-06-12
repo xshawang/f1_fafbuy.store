@@ -91,26 +91,29 @@ export class HpPayService {
     const paramLog = Object.entries(requestBody).map(([k, v]) => `${k}=${v}`).join('&')
     console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${paramLog}`)
  
-    // 发起请求（用 httpService.axiosRef 直接调用，绕开 RxJS 层）
+    // 发起请求（form stream 直传，headers 自动带 boundary）
     let response: any
     try {
       response = await this.httpService.axiosRef.post(endpoint, form, {
         timeout,
         headers: form.getHeaders(),
-        transformResponse: [(data) => data],
-        validateStatus: () => true,
       })
     } catch (error: any) {
-      // 网络层异常（超时、DNS、连接拒绝等）— 打印原始错误并抛出
-      console.error('[HP-PAY] 请求异常:', {
-        endpoint,
-        orderid: payload.orderid,
-        name: error?.name,
-        code: error?.code,
-        message: error?.message,
-        stack: error?.stack,
-      })
-      throw new ApiException(`HP Pay 请求失败: ${error?.message || error?.code || error?.name || 'unknown'}`)
+      // axios 抛出异常可能包含 HTTP 响应（4xx/5xx）
+      if (error?.response) {
+        response = error.response
+      } else {
+        // 网络层异常（超时、DNS、连接拒绝等）
+        console.error('[HP-PAY] 请求异常:', {
+          endpoint,
+          orderid: payload.orderid,
+          name: error?.name,
+          code: error?.code,
+          message: error?.message,
+          stack: error?.stack,
+        })
+        throw new ApiException(`HP Pay 请求失败: ${error?.message || error?.code || error?.name || 'unknown'}`)
+      }
     }
 
     // 响应日志
@@ -123,10 +126,10 @@ export class HpPayService {
       throw new ApiException(`HP Pay HTTP ${respStatus}: ${rawBody.substring(0, 500)}`)
     }
 
-    // 解析 JSON
+    // 解析响应体（去掉 transformResponse 后可能是对象或字符串）
     let data: HpPayResponse<T>
     try {
-      data = JSON.parse(response.data as string)
+      data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data
     } catch (e: any) {
       console.error(`[HP-PAY] JSON 解析失败, raw=${response.data}, error=${e?.message}`)
       throw new ApiException(`HP Pay 返回非 JSON: ${String(response.data).substring(0, 200)}`)
