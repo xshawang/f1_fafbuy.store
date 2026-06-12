@@ -403,24 +403,13 @@ export class F1Controller {
       console.log('Payment processed, payUrl:', result.payUrl)
 
       if (result.payUrl) {
-        // hp-pay 下单成功，重定向到收银台
-        res.redirect(302, result.payUrl)
+          return {"code": 200, "message": "Payment processed successfully", "data": {"payUrl": result.payUrl}}
       } else {
-        // hp-pay 下单失败，跳转到订单详情页
-        const redirectUrl = `/card/detail?orderNo=${paymentDto.orderNo}`
-        const html = `<html><body><h3>Payment submitted! Order Number: <a href="${redirectUrl}">${paymentDto.orderNo}</a></h3></body></html>`
-        res.setHeader('Content-Type', 'text/html; charset=utf-8')
-        res.send(html)
+        return {"code": 500, "message": "Payment failed", "data": null}
       }
     } catch (error: any) {
       console.error('Payment error:', error)
-      if (!res.headersSent) {
-        res.status(500).json({
-          code: 500,
-          message: `Payment failed: ${error.message}`,
-          data: null
-        })
-      }
+      return {"code": 500, "message":"Payment error","data": null}
     }
   }
 

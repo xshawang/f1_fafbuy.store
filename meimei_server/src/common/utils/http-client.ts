@@ -26,6 +26,8 @@ export interface RequestOptions {
 export interface HttpResponse<T = any> {
   status: number
   data: T
+  /** 原始响应体字符串（未经 JSON.parse） */
+  rawBody: string
   headers: Record<string, string>
 }
 
@@ -89,6 +91,8 @@ export async function request<T = any>(options: RequestOptions): Promise<HttpRes
     headers: mergedHeaders,
     httpsAgent,
     httpAgent,
+    // 保留原始响应字符串，不自动 JSON.parse
+    transformResponse: [(data) => data],
     validateStatus: () => true, // 不自动抛 HTTP 错误，统一处理
   }
 
@@ -117,10 +121,8 @@ export async function request<T = any>(options: RequestOptions): Promise<HttpRes
     }
   }
 
-  const rawBody =
-    typeof response.data === 'string'
-      ? response.data
-      : JSON.stringify(response.data ?? '')
+  // 原始响应体（字符串）
+  const rawBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? '')
   logger.log(`${logTag} status=${response.status}, body=${rawBody.substring(0, 500)}`)
 
   if (response.status < 200 || response.status >= 300) {
@@ -130,15 +132,15 @@ export async function request<T = any>(options: RequestOptions): Promise<HttpRes
   // 解析响应体
   let parsedData: T
   try {
-    parsedData =
-      typeof response.data === 'string' ? JSON.parse(response.data) : response.data
+    parsedData = JSON.parse(rawBody)
   } catch {
-    parsedData = response.data as T
+    parsedData = rawBody as unknown as T
   }
 
   return {
     status: response.status,
     data: parsedData,
+    rawBody,
     headers: response.headers as Record<string, string>,
   }
 }

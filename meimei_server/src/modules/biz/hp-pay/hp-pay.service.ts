@@ -65,6 +65,48 @@ export class HpPayService {
     return createHash('md5').update(signText, 'utf8').digest('hex').toUpperCase()
   }
 
+  /**
+   * 从原始 JSON 字符串中精确提取 result 字段的值
+   * 避免 JSON.parse 后再 stringify 导致格式变化（空格/key顺序）
+   */
+  private extractRawResult(rawBody: string): string | null {
+    const marker = '"result":'
+    const idx = rawBody.indexOf(marker)
+    if (idx === -1) return null
+    const start = idx + marker.length
+
+    if (rawBody[start] === '{') {
+      // JSON 对象 — 找到匹配的 }
+      let depth = 0
+      for (let i = start; i < rawBody.length; i++) {
+        if (rawBody[i] === '{') depth++
+        if (rawBody[i] === '}') depth--
+        if (depth === 0) return rawBody.substring(start, i + 1)
+      }
+    } else if (rawBody[start] === '[') {
+      // JSON 数组
+      let depth = 0
+      for (let i = start; i < rawBody.length; i++) {
+        if (rawBody[i] === '[') depth++
+        if (rawBody[i] === ']') depth--
+        if (depth === 0) return rawBody.substring(start, i + 1)
+      }
+    } else if (rawBody[start] === '"') {
+      // 字符串值 — 找到非转义的 "
+      let i = start + 1
+      while (i < rawBody.length) {
+        if (rawBody[i] === '"' && rawBody[i - 1] !== '\\') return rawBody.substring(start, i + 1)
+        i++
+      }
+    } else {
+      // 数字/布尔/null — 读到 , 或 } 或 ]
+      let i = start
+      while (i < rawBody.length && !',}]'.includes(rawBody[i])) i++
+      return rawBody.substring(start, i)
+    }
+    return null
+  }
+
   // ==================== 核心请求 ====================
 
   private async requestHpPay<T = any>(path: string, payload: PlainRecord): Promise<{
@@ -83,12 +125,16 @@ export class HpPayService {
       const resp = await HttpClient.formPost<HpPayResponse<T>>(endpoint, requestBody, { timeout })
       const data = resp.data
 
-      console.log('[hp-pay] response =>', JSON.stringify(data))
+      console.log('[hp-pay] response =>', resp.rawBody)
 
-      // 验签
-      const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
-      const expectedSign = this.generateSign(JSON.parse(resultText), key)
-      console.log('[hp-pay] 自己sign =>', expectedSign)
+      // 从原始响应中精确提取 result 字符串，避免 JSON.parse 后 stringify 格式变化
+      const rawResultStr = this.extractRawResult(resp.rawBody) || this.normalizeValue(data.result)
+      const signText = `result=${rawResultStr}&status=${data.status}&key=${key}`
+      const expectedSign = createHash('md5').update(signText, 'utf8').digest('hex').toUpperCase()
+
+      console.log('[hp-pay] signText =>', signText)
+      console.log('[hp-pay] 自己sign =>', expectedSign, '| 对方sign =>', data.sign)
+
       return { upstream: data, signValid: data.sign === expectedSign, expectedSign }
     } catch (error: any) {
       throw new ApiException(`HP Pay 请求失败: ${error?.message || 'unknown'}`)
