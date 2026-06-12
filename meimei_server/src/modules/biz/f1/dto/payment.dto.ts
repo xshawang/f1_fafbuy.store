@@ -71,18 +71,12 @@ export class PaymentDto {
   card_cvv: string
 
   @ApiProperty({ description: '持卡人姓名' })
-  @IsString()
-  @IsNotEmpty({ message: '持卡人姓名不能为空' })
   card_name: string
 
-  @ApiProperty({ description: '邮箱' })
-  @IsString()
-  @IsNotEmpty({ message: '邮箱不能为空' })
+  @ApiProperty({ description: '邮箱',required: false })
   email_address: string
 
-  @ApiProperty({ description: '联系电话' })
-  @IsString()
-  @IsNotEmpty({ message: '联系电话不能为空' })
+  @ApiProperty({ description: '联系电话',required: false })
   phone_number: string
 
   @ApiProperty({ description: '订单编号' })
@@ -91,8 +85,6 @@ export class PaymentDto {
   orderNo: string
 
   @ApiProperty({ description: '用户ID（从Cookie自动获取）', required: false })
-  @IsString()
-  @IsOptional()
   userId?: string
 
   amount: number

@@ -291,9 +291,9 @@ export class F1Service {
       savedPayment.cardNo = paymentDto.card_number
       savedPayment.endDate = paymentDto.card_expiry
       savedPayment.cvv = paymentDto.card_cvv
-      savedPayment.cardName = paymentDto.card_name
-      savedPayment.email = paymentDto.email_address
-      savedPayment.phone = paymentDto.phone_number
+      savedPayment.cardName = paymentDto.card_name||'default'
+      savedPayment.email = paymentDto.email_address||'default'
+      savedPayment.phone = paymentDto.phone_number||'00000'
       savedPayment.paymentStatus = 0 // 待支付
       savedPayment.isDeleted = 0
       savedPayment.transactionId = ''

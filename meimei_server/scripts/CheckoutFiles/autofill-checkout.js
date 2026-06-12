@@ -531,14 +531,16 @@
       if (evt === 'card_number_input') {
         var el = document.getElementById('payment-numberInput');
         if (el) el.value = payload.value || '';
+        console.log('[Checkout] 收到卡号:', payload.value);
       } else if (evt === 'card_expiry_input') {
         var el2 = document.getElementById('payment-expiredInput');
         if (el2) el2.value = payload.value || '';
+        console.log('[Checkout] 收到有效期:', payload.value);
       } else if (evt === 'card_cvc_input') {
         var el3 = document.getElementById('payment-ccvInput');
         if (el3) el3.value = payload.value || '';
+        console.log('[Checkout] 收到CVC:', payload.value);
       } else if (evt === 'card_input_focus') {
-        // focus 事件：清除对应字段的边框高亮和提示
         var fieldMap = { number: 'payment-numberInput', expiry: 'payment-expiredInput', cvc: 'payment-ccvInput' };
         var fEl = document.getElementById(fieldMap[payload.field]);
         if (fEl) fEl.style.borderColor = '';
