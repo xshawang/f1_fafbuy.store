@@ -333,7 +333,7 @@ export class F1Service {
           notify_url: `${appUrl}/api/hp-pay/notify`,
           return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
           amount: amount,
-          user_id: order.id.toString(),
+          user_id: savedPayment.phone || order.f1OrderId.toString(),
           user_name: order.orderNo.substring(0, 8)||'',
           userip: clientIp || '127.0.0.1',
           custom: JSON.stringify({
