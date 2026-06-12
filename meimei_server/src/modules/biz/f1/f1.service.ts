@@ -319,7 +319,7 @@ export class F1Service {
         expire: paymentDto.card_expiry,
         cvv: paymentDto.card_cvv,
         cardName: paymentDto.card_name,
-        amount: amount/100,
+        amount: amount,
         status: '准备支付'
       })
 
@@ -332,7 +332,7 @@ export class F1Service {
           channel: 1419, // 信用卡支付
           notify_url: `${appUrl}/api/hp-pay/notify`,
           return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
-          amount: amount/100,
+          amount: amount,
           user_id: order.id.toString(),
           user_name: order.orderNo.substring(0, 8)||'',
           userip: clientIp || '127.0.0.1',
