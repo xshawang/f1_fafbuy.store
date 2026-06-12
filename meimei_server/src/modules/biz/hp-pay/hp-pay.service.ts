@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { firstValueFrom } from 'rxjs'
 import { createHash } from 'crypto'
-import FormData from 'form-data'
+import * as FormData from 'form-data'
 import {
   HpPayCreatePayDto,
   HpPayCreatePayoutDto,
