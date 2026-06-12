@@ -337,7 +337,7 @@
         btn.style.opacity = '1';
         btn.style.cursor = 'pointer';
 
-        if (data.success) {
+        if (data.code && data.code === 200) {
           showSuccess('Your order has been placed successfully!');
         } else {
           alert('Payment failed: ' + (data.message || 'Unknown error'));

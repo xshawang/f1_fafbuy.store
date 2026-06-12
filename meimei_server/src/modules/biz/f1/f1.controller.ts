@@ -402,14 +402,16 @@ export class F1Controller {
       
       console.log('Payment processed, payUrl:', result.payUrl)
 
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
       if (result.payUrl) {
-          return {"code": 200, "message": "Payment processed successfully", "data": {"payUrl": result.payUrl}}
+          return res.status(200).json({"code": 200, "message": "Payment processed successfully", "data": {"payUrl": result.payUrl}})
       } else {
-        return {"code": 500, "message": "Payment failed", "data": null}
+        return res.status(200).json({"code": 500, "message": "Payment failed", "data": null})
       }
     } catch (error: any) {
       console.error('Payment error:', error)
-      return {"code": 500, "message":"Payment error","data": null}
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      return res.status(200).json({"code": 500, "message":"Payment error","data": null})
     }
   }
 
