@@ -184,6 +184,5 @@ export class HpPayNotifyDto {
 
   @ApiProperty({ description: '签名' })
   @IsString()
-  @Length(32, 32)
   sign: string
 }

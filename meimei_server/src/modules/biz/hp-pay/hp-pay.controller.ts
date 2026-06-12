@@ -1,6 +1,7 @@
-import { Body, Controller, Post, Res } from '@nestjs/common'
+import { Body, Controller, Post, Req, Res, UseInterceptors } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { Keep } from 'src/common/decorators/keep.decorator'
 import { Public } from 'src/common/decorators/public.decorator'
 import {
@@ -11,12 +12,13 @@ import {
   HpPayRequestDto,
 } from './dto/hp-pay.dto'
 import { HpPayService } from './hp-pay.service'
+import { F1Service } from '../f1/f1.service'
 
 @ApiTags('HP Pay')
 @Public()
 @Controller('hp-pay')
 export class HpPayController {
-  constructor(private readonly hpPayService: HpPayService) {}
+  constructor(private readonly f1Service: F1Service, private readonly hpPayService: HpPayService) {}
 
   @ApiOperation({ summary: '收款下单 /pay' })
   @Post('pay')
@@ -44,21 +46,28 @@ export class HpPayController {
 
   @ApiOperation({ summary: '异步通知验签' })
   @Post('notify')
+  @Public()
   @Keep()
-  async notify(@Body() dto: HpPayNotifyDto, @Res() res: Response) {
-    const notifyDto: HpPayNotifyDto = {
-      status: dto?.status,
-      sign: dto?.sign,
-      result: typeof dto?.result === 'string' ? dto.result : JSON.stringify(dto?.result ?? ''),
+  @UseInterceptors(FileInterceptor(''))
+  async notify(
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    // 兼容 multipart/form-data 和 JSON
+    const body: any = req.body ?? {}
+    const dto: HpPayNotifyDto = {
+      status: body.status,
+      sign: body.sign,
+      result: typeof body.result === 'string' ? body.result : JSON.stringify(body.result ?? ''),
     }
 
-    const verified = this.hpPayService.verifyNotify(notifyDto)
-    if (!verified.valid) {
-      res.status(400).setHeader('Content-Type', 'text/plain; charset=utf-8')
+    const verified = await this.f1Service.handleHpPayNotify(dto)
+    console.log('HP Pay Notify Verification:', verified)
+    if (!verified) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
       res.send('fail')
       return
     }
-
     res.setHeader('Content-Type', 'text/plain; charset=utf-8')
     res.send('success')
   }

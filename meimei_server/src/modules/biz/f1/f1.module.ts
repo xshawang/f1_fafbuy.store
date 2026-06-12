@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Module, forwardRef } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { HttpModule } from '@nestjs/axios'
 import { F1Order } from './entities/f1-order.entity'
@@ -12,7 +12,7 @@ import { HpPayModule } from '../hp-pay/hp-pay.module'
   imports: [
     TypeOrmModule.forFeature([F1Order, Payment, PaymentMethod]),
     HttpModule,
-    HpPayModule,
+    forwardRef(() => HpPayModule),
   ],
   controllers: [F1Controller],
   providers: [F1Service],

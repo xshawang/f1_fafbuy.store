@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios'
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { firstValueFrom } from 'rxjs'
 import { createHash } from 'crypto'
 import {
@@ -10,7 +10,7 @@ import {
   HpPayRequestDto,
 } from './dto/hp-pay.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
-
+import { F1Service } from 'src/modules/biz/f1/f1.service'
 type PlainRecord = Record<string, string | number>
 
 type HpPayResponse<T = any> = {
@@ -23,7 +23,10 @@ type HpPayResponse<T = any> = {
 export class HpPayService {
   private readonly logger = new Logger(HpPayService.name)
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    @Inject(forwardRef(() => F1Service)) private readonly f1Service: F1Service,
+  ) {}
 
   private getConfig() {
     const baseUrl = process.env.HP_PAY_BASE_URL || ''
@@ -282,4 +285,5 @@ export class HpPayService {
       },
     }
   }
+  
 }

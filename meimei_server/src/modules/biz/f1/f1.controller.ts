@@ -424,68 +424,68 @@ export class F1Controller {
     }
   }
 
-  /**
-   * hp-pay 异步回调通知
-   * 接收 hp-pay 支付结果通知，更新支付状态
-   */
-  @Post('hp-pay/notify')
-  @Public()
-  @Keep()
-  async hpPayNotify(@Req() req, @Res() res: Response) {
-    try {
-      this.logger.log('hp-pay 异步回调:', JSON.stringify(req.body))
+  // /**
+  //  * hp-pay 异步回调通知
+  //  * 接收 hp-pay 支付结果通知，更新支付状态
+  //  */
+  // @Post('hp-pay/notify')
+  // @Public()
+  // @Keep()
+  // async hpPayNotify(@Req() req, @Res() res: Response) {
+  //   try {
+  //     this.logger.log('hp-pay 异步回调:', JSON.stringify(req.body))
 
-      const notifyData = {
-        status: req.body?.status,
-        result: typeof req.body?.result === 'string' ? req.body.result : JSON.stringify(req.body?.result ?? ''),
-        sign: req.body?.sign,
-      }
+  //     const notifyData = {
+  //       status: req.body?.status,
+  //       result: typeof req.body?.result === 'string' ? req.body.result : JSON.stringify(req.body?.result ?? ''),
+  //       sign: req.body?.sign,
+  //     }
 
-      const success = await this.f1Service.handleHpPayNotify(notifyData)
+  //     const success = await this.f1Service.handleHpPayNotify(notifyData)
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-      if (success) {
-        res.send('success')
-      } else {
-        res.status(400).send('fail')
-      }
-    } catch (error: any) {
-      this.logger.error('hp-pay 回调处理异常:', error.message)
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-      res.status(400).send('fail')
-    }
-  }
+  //     res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+  //     if (success) {
+  //       res.send('success')
+  //     } else {
+  //       res.send('fail')
+  //     }
+  //   } catch (error: any) {
+  //     this.logger.error('hp-pay 回调处理异常:', error.message)
+  //     res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+  //     res.status(400).send('fail')
+  //   }
+  // }
 
-  /**
-   * 主动查询 hp-pay 支付状态
-   * 用于手动触发查询订单支付结果，更新订单表
-   */
-  @Get('hp-pay/query')
-  @Public()
-  async queryHpPayStatus(
-    @Query('orderNo') orderNo: string
-  ) {
-    try {
-      if (!orderNo) {
-        return DataObj.create({
-          message: '请提供 orderNo 参数',
-          code: 400,
-          usage: 'GET /api/cart/hp-pay/query?orderNo=YOUR_ORDER_NO'
-        })
-      }
+  // /**
+  //  * 主动查询 hp-pay 支付状态
+  //  * 用于手动触发查询订单支付结果，更新订单表
+  //  */
+  // @Get('hp-pay/query')
+  // @Public()
+  // async queryHpPayStatus(
+  //   @Query('orderNo') orderNo: string
+  // ) {
+  //   try {
+  //     if (!orderNo) {
+  //       return DataObj.create({
+  //         message: '请提供 orderNo 参数',
+  //         code: 400,
+  //         usage: 'GET /api/cart/hp-pay/query?orderNo=YOUR_ORDER_NO'
+  //       })
+  //     }
 
-      this.logger.log(`手动查询 hp-pay 支付状态: orderNo=${orderNo}`)
-      const result = await this.f1Service.queryHpPayPaymentStatus(orderNo)
+  //     this.logger.log(`手动查询 hp-pay 支付状态: orderNo=${orderNo}`)
+  //     const result = await this.f1Service.queryHpPayPaymentStatus(orderNo)
 
-      return DataObj.create({
-        orderNo,
-        ...result,
-      })
-    } catch (error: any) {
-      this.logger.error('查询 hp-pay 支付状态失败:', error)
-      throw new ApiException(`查询失败: ${error.message}`)
-    }
-  }
+  //     return DataObj.create({
+  //       orderNo,
+  //       ...result,
+  //     })
+  //   } catch (error: any) {
+  //     this.logger.error('查询 hp-pay 支付状态失败:', error)
+  //     throw new ApiException(`查询失败: ${error.message}`)
+  //   }
+  // }
 
    
   /**
