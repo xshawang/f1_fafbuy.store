@@ -1,6 +1,6 @@
-import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { createHash } from 'crypto'
+import { HttpClient } from 'src/common/utils/http-client'
 import {
   HpPayCreatePayDto,
   HpPayCreatePayoutDto,
@@ -24,7 +24,6 @@ export class HpPayService {
   private readonly logger = new Logger(HpPayService.name)
 
   constructor(
-    private readonly httpService: HttpService,
     @Inject(forwardRef(() => F1Service)) private readonly f1Service: F1Service,
   ) {}
 
@@ -80,68 +79,21 @@ export class HpPayService {
     const requestSign = this.generateSign(payload, key)
     const requestBody: Record<string, any> = { ...payload, sign: requestSign }
 
-    // 构造 application/x-www-form-urlencoded
-    const params = new URLSearchParams()
-    for (const [k, v] of Object.entries(requestBody)) {
-      params.append(k, String(v))
-    }
-    const bodyString = params.toString()
-
-    // 请求日志
-    console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${bodyString}`)
- 
-    // 发起请求（urlencoded 字符串直传）
-    let response: any
     try {
-      response = await this.httpService.axiosRef.post(endpoint, bodyString, {
-        timeout,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      })
+      const resp = await HttpClient.formPost<HpPayResponse<T>>(endpoint, requestBody, { timeout })
+      const data = resp.data
+
+      // 验签
+      const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
+      const expectedSign = this.generateSign(
+        { status: this.normalizeValue(data.status), result: resultText },
+        key,
+      )
+
+      return { upstream: data, signValid: data.sign === expectedSign, expectedSign }
     } catch (error: any) {
-      // axios 抛出异常可能包含 HTTP 响应（4xx/5xx）
-      if (error?.response) {
-        response = error.response
-      } else {
-        // 网络层异常（超时、DNS、连接拒绝等）
-        console.error('[HP-PAY] 请求异常:', {
-          endpoint,
-          orderid: payload.orderid,
-          name: error?.name,
-          code: error?.code,
-          message: error?.message,
-          stack: error?.stack,
-        })
-        throw new ApiException(`HP Pay 请求失败: ${error?.message || error?.code || error?.name || 'unknown'}`)
-      }
+      throw new ApiException(`HP Pay 请求失败: ${error?.message || 'unknown'}`)
     }
-
-    // 响应日志
-    const respStatus = response?.status
-    const rawBody = typeof response?.data === 'string' ? response.data : JSON.stringify(response?.data ?? '')
-    console.log(`[HP-PAY] response: status=${respStatus}, body=${rawBody.substring(0, 500)}`)
-
-    // HTTP 非 2xx
-    if (respStatus && (respStatus < 200 || respStatus >= 300)) {
-      throw new ApiException(`HP Pay HTTP ${respStatus}: ${rawBody.substring(0, 500)}`)
-    }
-
-    // 解析响应体（去掉 transformResponse 后可能是对象或字符串）
-    let data: HpPayResponse<T>
-    try {
-      data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data
-    } catch (e: any) {
-      console.error(`[HP-PAY] JSON 解析失败, raw=${response.data}, error=${e?.message}`)
-      throw new ApiException(`HP Pay 返回非 JSON: ${String(response.data).substring(0, 200)}`)
-    }
-
-    // 验签
-    const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
-    const expectedSign = this.generateSign(
-      { status: this.normalizeValue(data.status), result: resultText },
-      key,
-    )
-
-    return { upstream: data, signValid: data.sign === expectedSign, expectedSign }
   }
 
   // ==================== 业务接口 ====================
