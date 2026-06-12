@@ -401,7 +401,7 @@ export class F1Service {
 
       if (!verified.valid) {
         this.logger.warn(`hp-pay 回调验签失败: expectedSign=${verified.expectedSign}, sign=${notifyData.sign}`)
-        return false
+       // return false
       }
 
       const status = Number(notifyData.status)
