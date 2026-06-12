@@ -1,6 +1,5 @@
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
-import { firstValueFrom } from 'rxjs'
 import { createHash } from 'crypto'
 import * as FormData from 'form-data'
 import {
@@ -92,17 +91,15 @@ export class HpPayService {
     const paramLog = Object.entries(requestBody).map(([k, v]) => `${k}=${v}`).join('&')
     console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${paramLog}`)
  
-    // 发起请求
+    // 发起请求（用 httpService.axiosRef 直接调用，绕开 RxJS 层）
     let response: any
     try {
-      response = await firstValueFrom(
-        this.httpService.post(endpoint, form, {
-          timeout,
-          headers: form.getHeaders(),
-          transformResponse: [(data) => data],
-          validateStatus: () => true,
-        }),
-      )
+      response = await this.httpService.axiosRef.post(endpoint, form, {
+        timeout,
+        headers: form.getHeaders(),
+        transformResponse: [(data) => data],
+        validateStatus: () => true,
+      })
     } catch (error: any) {
       // 网络层异常（超时、DNS、连接拒绝等）— 打印原始错误并抛出
       console.error('[HP-PAY] 请求异常:', {
