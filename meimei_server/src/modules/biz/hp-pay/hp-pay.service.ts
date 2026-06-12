@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { firstValueFrom } from 'rxjs'
 import { createHash } from 'crypto'
+import FormData from 'form-data'
 import {
   HpPayCreatePayDto,
   HpPayCreatePayoutDto,
@@ -11,6 +12,7 @@ import {
 } from './dto/hp-pay.dto'
 import { ApiException } from 'src/common/exceptions/api.exception'
 import { F1Service } from 'src/modules/biz/f1/f1.service'
+
 type PlainRecord = Record<string, string | number>
 
 type HpPayResponse<T = any> = {
@@ -28,18 +30,21 @@ export class HpPayService {
     @Inject(forwardRef(() => F1Service)) private readonly f1Service: F1Service,
   ) {}
 
+  // ==================== 配置 ====================
+
   private getConfig() {
     const baseUrl = process.env.HP_PAY_BASE_URL || ''
     const uid = process.env.HP_PAY_UID || ''
     const key = process.env.HP_PAY_KEY || ''
-    const timeout = Number(process.env.HP_PAY_TIMEOUT_MS || 10000)
+    const timeout = Number(process.env.HP_PAY_TIMEOUT_MS || 30000)
 
     if (!baseUrl || !uid || !key) {
       throw new ApiException('缺少 HP Pay 配置：请设置 HP_PAY_BASE_URL、HP_PAY_UID、HP_PAY_KEY')
     }
-
     return { baseUrl, uid, key, timeout }
   }
+
+  // ==================== 工具方法 ====================
 
   private resolveTimestamp(timestamp?: number): number {
     return timestamp ?? Math.floor(Date.now() / 1000)
@@ -63,13 +68,7 @@ export class HpPayService {
     return createHash('md5').update(signText, 'utf8').digest('hex').toUpperCase()
   }
 
-  private buildFormPayload(payload: Record<string, unknown>): string {
-    const form = new URLSearchParams()
-    for (const [key, value] of Object.entries(payload)) {
-      form.append(key, this.normalizeValue(value))
-    }
-    return form.toString()
-  }
+  // ==================== 核心请求 ====================
 
   private async requestHpPay<T = any>(path: string, payload: PlainRecord): Promise<{
     upstream: HpPayResponse<T>
@@ -79,107 +78,78 @@ export class HpPayService {
     const { baseUrl, key, timeout } = this.getConfig()
     const endpoint = `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
 
+    // 签名
     const requestSign = this.generateSign(payload, key)
-    const requestBody = {
-      ...payload,
-      sign: requestSign,
+    const requestBody: Record<string, any> = { ...payload, sign: requestSign }
+
+    // 构造 multipart/form-data
+    const form = new FormData()
+    for (const [k, v] of Object.entries(requestBody)) {
+      form.append(k, String(v))
     }
 
-    // [HP-PAY-V2] 版本标记，方便确认部署生效
-    console.log('[HP-PAY-V2] HP Pay request ->', endpoint, 'orderid=', payload.orderid || '')
-    console.log('[HP-PAY-V2] HP Pay request body:', this.buildFormPayload(requestBody))
-    this.logger.log(`[HP-PAY-V2] HP Pay request -> ${endpoint}, orderid=${payload.orderid || ''}`)
-    this.logger.log(`[HP-PAY-V2] HP Pay request body: ${this.buildFormPayload(requestBody)}`)
+    // 请求日志
+    const paramLog = Object.entries(requestBody).map(([k, v]) => `${k}=${v}`).join('&')
+    console.log(`[HP-PAY] POST ${endpoint} | orderid=${payload.orderid || ''} | params: ${paramLog}`)
 
+    // 发起请求
     let response: any
     try {
       response = await firstValueFrom(
-        this.httpService.post(endpoint, this.buildFormPayload(requestBody), {
+        this.httpService.post(endpoint, form, {
           timeout,
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          responseType: 'text',
+          headers: form.getHeaders(),
           transformResponse: [(data) => data],
-          // 让 axios 不要因为 4xx/5xx 抛错，把响应体也带回来
           validateStatus: () => true,
         }),
       )
-    } catch (httpError: any) {
-      // 详细打印 HTTP 错误信息（仅网络层错误，如超时/DNS/连接被拒）
-      const status = httpError?.response?.status
-      const statusText = httpError?.response?.statusText
-      const respBody = httpError?.response?.data
-      const errCode = httpError?.code
-      const errMsg = httpError?.message
-      const errName = httpError?.name
-      const errStack = httpError?.stack
-      console.error('[HP-PAY-V2] HTTP error:', {
+    } catch (error: any) {
+      // 网络层异常（超时、DNS、连接拒绝等）— 打印原始错误并抛出
+      console.error('[HP-PAY] 请求异常:', {
         endpoint,
         orderid: payload.orderid,
-        status,
-        statusText,
-        errCode,
-        errMsg,
-        errName,
-        respBody: typeof respBody === 'string' ? respBody.substring(0, 500) : respBody,
-        stack: errStack,
+        name: error?.name,
+        code: error?.code,
+        message: error?.message,
+        stack: error?.stack,
       })
-      this.logger.error(
-        `[HP-PAY-V2] HP Pay HTTP 请求失败 -> endpoint=${endpoint}, orderid=${payload.orderid || ''}, ` +
-        `httpStatus=${status || 'N/A'}, statusText=${statusText || 'N/A'}, ` +
-        `errorCode=${errCode || 'N/A'}, errorName=${errName || 'N/A'}, errorMessage=${errMsg || 'N/A'}, ` +
-        `respBody=${typeof respBody === 'string' ? respBody.substring(0, 500) : JSON.stringify(respBody || {}).substring(0, 500)}`
-      )
-      throw new ApiException(
-        `HP Pay 请求失败: ${errMsg || errCode || errName || 'unknown'}` +
-        (status ? ` (HTTP ${status})` : '') +
-        (respBody ? ` body=${typeof respBody === 'string' ? respBody.substring(0, 200) : JSON.stringify(respBody).substring(0, 200)}` : '')
-      )
+      throw new ApiException(`HP Pay 请求失败: ${error?.message || error?.code || error?.name || 'unknown'}`)
     }
 
+    // 响应日志
     const respStatus = response?.status
-    const respHeaders = response?.headers
     const rawBody = typeof response?.data === 'string' ? response.data : JSON.stringify(response?.data ?? '')
-    console.log('[HP-PAY-V2] HP Pay response:', { status: respStatus, body: rawBody.substring(0, 500) })
-    this.logger.log(`[HP-PAY-V2] HP Pay response: httpStatus=${respStatus}, body=${rawBody.substring(0, 500)}`)
+    console.log(`[HP-PAY] response: status=${respStatus}, body=${rawBody.substring(0, 500)}`)
 
-    // HTTP 状态码非 2xx，提前抛错
+    // HTTP 非 2xx
     if (respStatus && (respStatus < 200 || respStatus >= 300)) {
-      this.logger.error(`[HP-PAY-V2] HP Pay HTTP 非 2xx: status=${respStatus}, body=${rawBody.substring(0, 500)}`)
-      throw new ApiException(`HP Pay HTTP ${respStatus}: ${rawBody.substring(0, 200)}`)
+      throw new ApiException(`HP Pay HTTP ${respStatus}: ${rawBody.substring(0, 500)}`)
     }
 
+    // 解析 JSON
     let data: HpPayResponse<T>
     try {
       data = JSON.parse(response.data as string)
-    } catch (error) {
-      this.logger.error(`HP Pay response parse failed, raw=${response.data}`)
-      throw new ApiException(
-        `HP Pay 返回非 JSON 数据: ${typeof response.data === 'string' ? response.data.substring(0, 200) : String(response.data)}`
-      )
+    } catch (e: any) {
+      console.error(`[HP-PAY] JSON 解析失败, raw=${response.data}, error=${e?.message}`)
+      throw new ApiException(`HP Pay 返回非 JSON: ${String(response.data).substring(0, 200)}`)
     }
 
+    // 验签
     const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
     const expectedSign = this.generateSign(
-      {
-        status: this.normalizeValue(data.status),
-        result: resultText,
-      },
+      { status: this.normalizeValue(data.status), result: resultText },
       key,
     )
 
-    return {
-      upstream: data,
-      signValid: data.sign === expectedSign,
-      expectedSign,
-    }
+    return { upstream: data, signValid: data.sign === expectedSign, expectedSign }
   }
+
+  // ==================== 业务接口 ====================
 
   async pay(dto: HpPayCreatePayDto) {
     const { uid } = this.getConfig()
-
-    const payload: PlainRecord = {
+    return this.requestHpPay('/pay', {
       uid,
       currencyID: dto.currencyID,
       orderid: dto.orderid,
@@ -192,14 +162,11 @@ export class HpPayService {
       userip: dto.userip,
       timestamp: this.resolveTimestamp(dto.timestamp),
       custom: dto.custom ?? '',
-    }
-
-    return this.requestHpPay('/pay', payload)
+    })
   }
 
   async applyfor(dto: HpPayCreatePayoutDto) {
     const { uid } = this.getConfig()
-
     const payload: PlainRecord = {
       uid,
       currencyID: dto.currencyID,
@@ -215,22 +182,16 @@ export class HpPayService {
       bank_id: dto.bank_id,
       bank_sub: dto.bank_sub,
     }
-
-    if (dto.user_name) {
-      payload.user_name = dto.user_name
-    }
-
+    if (dto.user_name) payload.user_name = dto.user_name
     return this.requestHpPay('/applyfor', payload)
   }
 
   async orderquery(dto: HpPayOrderQueryDto) {
     const { uid } = this.getConfig()
-
     const payload: PlainRecord = {
       uid,
       timestamp: this.resolveTimestamp(dto.timestamp),
     }
-
     if (dto.orderid) payload.orderid = dto.orderid
     if (dto.currencyID !== undefined) payload.currencyID = dto.currencyID
     if (dto.page !== undefined) payload.page = dto.page
@@ -238,44 +199,35 @@ export class HpPayService {
     if (dto.start) payload.start = dto.start
     if (dto.end) payload.end = dto.end
     if (dto.date_type !== undefined) payload.date_type = dto.date_type
-
     return this.requestHpPay('/orderquery', payload)
   }
 
   async getpoints(dto: HpPayRequestDto) {
     const { uid } = this.getConfig()
-
-    const payload: PlainRecord = {
+    return this.requestHpPay('/getpoints', {
       uid,
       timestamp: this.resolveTimestamp(dto.timestamp),
-    }
-
-    return this.requestHpPay('/getpoints', payload)
+    })
   }
+
+  // ==================== 回调验签 ====================
 
   verifyNotify(dto: HpPayNotifyDto) {
     const { key } = this.getConfig()
     const rawResult = typeof dto.result === 'string' ? dto.result : JSON.stringify(dto.result ?? '')
 
     const expectedSign = this.generateSign(
-      {
-        status: this.normalizeValue(dto.status),
-        result: rawResult,
-      },
+      { status: this.normalizeValue(dto.status), result: rawResult },
       key,
     )
-
-    const valid = expectedSign === dto.sign
 
     let parsedResult: any = rawResult
     try {
       parsedResult = JSON.parse(rawResult)
-    } catch {
-      parsedResult = rawResult
-    }
+    } catch { /* 保持原始字符串 */ }
 
     return {
-      valid,
+      valid: expectedSign === dto.sign,
       expectedSign,
       payload: {
         status: Number(dto.status),
@@ -285,5 +237,29 @@ export class HpPayService {
       },
     }
   }
-  
+
+  // ==================== 回调处理 ====================
+
+  async handleHpPayNotify(payload: any) {
+    console.log('[HP-PAY] Notify Payload:', JSON.stringify(payload))
+
+    const orderId = payload.orderid
+    if (!orderId) {
+      this.logger.error('[HP-PAY] 回调缺少 orderid')
+      return { success: false, message: '缺少 orderid' }
+    }
+
+    try {
+      const order = await this.f1Service.findOne(orderId)
+      if (!order) {
+        this.logger.warn(`[HP-PAY] 订单不存在: ${orderId}`)
+        return { success: false, message: '订单不存在' }
+      }
+      this.logger.log(`[HP-PAY] 订单 ${orderId} 回调处理成功`)
+      return { success: true, order }
+    } catch (error: any) {
+      this.logger.error(`[HP-PAY] 处理回调失败: ${error.message}`)
+      return { success: false, message: error.message }
+    }
+  }
 }
