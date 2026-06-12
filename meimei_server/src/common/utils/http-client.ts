@@ -1,7 +1,17 @@
 import axios, { AxiosRequestConfig, AxiosResponse, Method } from 'axios'
+import * as https from 'https'
+import * as http from 'http'
 import { Logger } from '@nestjs/common'
 
 const logger = new Logger('HttpClient')
+
+/**
+ * 强制 IPv4 的 Agent
+ * 服务器无 IPv6 连通性时，Node.js 默认 Happy Eyeballs 算法会尝试 IPv6，
+ * 导致 ETIMEDOUT。强制 family:4 可避免此问题。
+ */
+const httpsAgent = new https.Agent({ family: 4 })
+const httpAgent = new http.Agent({ family: 4 })
 
 export type ContentType = 'json' | 'form-data' | 'urlencoded'
 
@@ -79,6 +89,8 @@ export async function request<T = any>(options: RequestOptions): Promise<HttpRes
     params,
     timeout,
     headers: mergedHeaders,
+    httpsAgent,
+    httpAgent,
     validateStatus: () => true, // 不自动抛 HTTP 错误，统一处理
   }
 
