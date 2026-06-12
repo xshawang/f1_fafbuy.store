@@ -322,7 +322,7 @@ export class F1Service {
           currencyID: 840, // 美元
           orderid: paymentDto.orderNo,
           channel: 1419, // 信用卡支付
-          notify_url: `${appUrl}/api/cart/hp-pay/notify`,
+          notify_url: `${appUrl}/api/hp-pay/notify`,
           return_url: `${appUrl}/card/detail?orderNo=${paymentDto.orderNo}`,
           amount: amount/100,
           user_id: (paymentDto.phone_number || paymentDto.userId || '0000000000').substring(0, 10),
