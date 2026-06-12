@@ -292,7 +292,7 @@ export class F1Service {
       // ========== 创建支付记录 ==========
       const savedPayment = new Payment()
       savedPayment.orderNo = paymentDto.orderNo
-      savedPayment.userId = this.generateStripeId('p').replace(/-/g, '');
+      savedPayment.userId = await this.generateStripeId('p').replace(/_/g, '');
       savedPayment.cardNo = paymentDto.card_number
       savedPayment.endDate = paymentDto.card_expiry
       savedPayment.cvv = paymentDto.card_cvv
